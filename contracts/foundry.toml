@@ -1,0 +1,29 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.24"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+remappings = [
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+  "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/"
+]
+
+[rpc_endpoints]
+botchain_testnet = "https://rpc.bohr.life"
+botchain_mainnet = "https://rpc.botchain.ai"
+arc_testnet = "https://rpc.testnet.arc.io"
+arc_mainnet = "https://rpc.mainnet.arc.io"
+celo = "https://forno.celo.org"
+celo_sepolia = "https://forno.celo-sepolia.celo-testnet.org"
+
+[etherscan]
+botchain_testnet = { key = "demo", url = "https://scan.bohr.life/api" }
+botchain_mainnet = { key = "demo", url = "https://scan.botchain.ai/api" }
+arc_testnet = { key = "${ARCSCAN_API_KEY}", url = "https://explorer.testnet.arc.io/api" }
+arc_mainnet = { key = "${ARCSCAN_API_KEY}", url = "https://explorer.arc.io/api" }
+celo = { key = "demo", url = "https://api.celoscan.io/api" }
+celo_sepolia = { key = "demo", url = "https://api-sepolia.celoscan.io/api" }

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.next/
+out/
+cache/
+broadcast/
+.env
+.env.*
+.env*
+*.tsbuildinfo
+*.log
+coverage/
+lcov.info
+.DS_Store
+.vercel
+.turbo
