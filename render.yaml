@@ -1,0 +1,95 @@
+# Monorepo Blueprint: deploys only the Express gateway.
+# Vercel Root Directory = frontend. Do not add a second Render web service here.
+services:
+  - type: web
+    name: agentpay-backend
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: backend
+    buildFilter:
+      paths:
+        - backend/**
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      # Non-sensitive — committed as plain values, applied on Blueprint sync.
+      - key: X402_NETWORK
+        value: arc-testnet
+      - key: X402_EXTRA_NETWORKS
+        value: "eip155:5042002,eip155:5042,eip155:968,eip155:677"
+      - key: ARC_TESTNET_RPC_URL
+        value: https://rpc.testnet.arc.io
+      - key: ARC_MAINNET_RPC_URL
+        value: https://rpc.mainnet.arc.io
+      - key: USDC_ADDRESS
+        value: "0x3600000000000000000000000000000000000000"
+      - key: CIRCLE_FACILITATOR_URL
+        value: https://api.circle.com/v1/facilitator/x402
+      - key: BOF_FACILITATOR_URL
+        value: https://bof-facilitator.onrender.com
+      - key: BOTCHAIN_TESTNET_RPC_URL
+        value: https://rpc.bohr.life
+      - key: BOTCHAIN_MAINNET_RPC_URL
+        value: https://rpc.botchain.ai
+      - key: BOTCHAIN_RPC_URL
+        value: https://rpc.bohr.life
+      - key: APAY_TOKEN_ADDRESS_TESTNET
+        value: "0xFd7bF688d5a772A81DfE39da502F69FD99cE92c7"
+      - key: APAY_TOKEN_ADDRESS_MAINNET
+        value: "0x4a781889Ce38c08B86b02e084A5A19609376b857"
+      - key: APAY_TOKEN_ADDRESS
+        value: "0xFd7bF688d5a772A81DfE39da502F69FD99cE92c7"
+      - key: APAY_TOKEN_ADDRESS_ARC
+        value: ""
+      - key: PAYMENT_RECIPIENT_ADDRESS_TESTNET
+        value: "0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6"
+      - key: PAYMENT_RECIPIENT_ADDRESS
+        value: "0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6"
+      - key: ERC8004_IDENTITY_ARC_TESTNET
+        value: "0x8004A818BFB912233c491871b3d84c89A494BD9e"
+      - key: ERC8004_REPUTATION_ARC_TESTNET
+        value: "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+      - key: ERC8004_IDENTITY_ARC_MAINNET
+        value: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+      - key: ERC8004_REPUTATION_ARC_MAINNET
+        value: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: ANTHROPIC_MODEL
+        value: claude-3-5-sonnet-20241022
+      - key: APAY_PRICE_FALLBACK_USD
+        value: "0.0038"
+      - key: APAY_PRICE_CACHE_TTL_SEC
+        value: "60"
+      - key: APAY_PRICE_API_URL
+        value: "https://dex-wallet.botchain.ai/api/v1/price?token=0x4a781889Ce38c08B86b02e084A5A19609376b857&pool_type=all"
+      # After DeployArcRegistry: set these four to the proxy (Registry is payTo).
+      - key: PAYMENT_RECIPIENT_ADDRESS_ARC_TESTNET
+        value: ""
+      - key: PAYMENT_RECIPIENT_ADDRESS_ARC_MAINNET
+        value: ""
+      - key: AGENT_PAY_REGISTRY_ARC_TESTNET
+        value: ""
+      - key: AGENT_PAY_REGISTRY_ARC_MAINNET
+        value: ""
+      # Secrets — Dashboard only. Omission does not delete existing values.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CIRCLE_API_KEY_TESTNET
+        sync: false
+      - key: CIRCLE_API_KEY_MAINNET
+        sync: false
+      - key: CIRCLE_API_KEY
+        sync: false
+      - key: SELLER_PRIVATE_KEY
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: PAYMENT_RECIPIENT_ADDRESS_MAINNET
+        sync: false
