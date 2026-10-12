@@ -138,8 +138,8 @@ export function chainById(chainId: number): Chain {
 
 export function rpcUrlFor(chainId: number): string {
   if (typeof window !== "undefined") {
-    if (chainId === 5042) return "/api/rpc/arc";
-    if (chainId === 5042002) return "/api/rpc/arc-testnet";
+    if (chainId === 5042) return "/rpc/arc";
+    if (chainId === 5042002) return "/rpc/arc-testnet";
   }
   const chain = chainById(chainId);
   return chain.rpcUrls.default.http[0] ?? "https://rpc.mainnet.arc.io";
@@ -164,12 +164,12 @@ export function addChainParams(chainId: number) {
 
 export const publicClientArc = createPublicClient({
   chain: arc,
-  transport: http(typeof window !== "undefined" ? "/api/rpc/arc" : (process.env.NEXT_PUBLIC_ARC_MAINNET_RPC || "https://rpc.mainnet.arc.io")),
+  transport: http(typeof window !== "undefined" ? "/rpc/arc" : (process.env.NEXT_PUBLIC_ARC_MAINNET_RPC || "https://rpc.mainnet.arc.io")),
 });
 
 export const publicClientArcTestnet = createPublicClient({
   chain: arcTestnet,
-  transport: http(typeof window !== "undefined" ? "/api/rpc/arc-testnet" : (process.env.NEXT_PUBLIC_ARC_TESTNET_RPC || "https://rpc.testnet.arc.io")),
+  transport: http(typeof window !== "undefined" ? "/rpc/arc-testnet" : (process.env.NEXT_PUBLIC_ARC_TESTNET_RPC || "https://rpc.testnet.arc.io")),
 });
 
 export const publicClientBotChain = createPublicClient({
