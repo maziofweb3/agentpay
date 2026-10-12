@@ -1,62 +1,104 @@
-# AgentPay
+# AgentPay AI
 
-Pay-per-prompt AI on **Arc** (USDC via Circle Facilitator Service) with **BotChain** (`$APAY` via BOF) as a switchable chain.
+> Pay-per-prompt AI compute on **Arc** (native/ERC-20 USDC via Circle Facilitator Service) and **BotChain** (`$APAY` via BOF) in a unified monorepo.
+
+**Live Frontend:** [https://www.agentpayai.online](https://www.agentpayai.online)  
+**Live Backend API:** [https://agentpay-backend-s5vs.onrender.com](https://agentpay-backend-s5vs.onrender.com)  
+**Circle Facilitator:** [https://api.circle.com/v1/facilitator/x402](https://api.circle.com/v1/facilitator/x402)  
+**BOF Facilitator:** [https://bof-facilitator.onrender.com](https://bof-facilitator.onrender.com)  
+**GitHub Repository:** [https://github.com/maziofweb3/agentpay](https://github.com/maziofweb3/agentpay)
+
+---
+
+## Architecture Overview
+
+AgentPay is structured as an end-to-end full-stack monorepo:
 
 ```
 agentpay/
-  frontend/    Next.js — Vercel Root Directory = frontend
-  backend/     Express x402 gateway — Render rootDir = backend
-  contracts/   Foundry (AgentPayRegistry, APAYToken, HybridZap)
-  render.yaml  Render Blueprint for the backend only
+├── frontend/    # Next.js 16 Web App (App Router, Viem, Wagmi, Privy Auth) -> Deployed to Vercel
+├── backend/     # Express.js x402 AI Payment Gateway & Telemetry -> Deployed to Render
+├── contracts/   # Foundry Smart Contracts (AgentPayRegistry, APAYToken, HybridZap)
+└── render.yaml  # Root Render Blueprint (rootDir: backend, buildFilter: backend/**)
 ```
 
-This is a **single git repo**, not submodules. Clone it and you have the full stack.
+---
 
-Live BotChain deploys still track the older split remotes (`agentpay-ai/agentpay_*`) until this repo is linked on Vercel/Render.
+## Multi-Chain Matrix
 
-## Chains
+| Network | Chain ID | Primary Asset | Decimals | Address | Facilitator Rail |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Arc Mainnet** (Default Prod) | `5042` | USDC | 6 | `0x3600000000000000000000000000000000000000` | Circle Facilitator Service (`exact`) |
+| **Arc Testnet** | `5042002` | USDC | 6 | `0x3600000000000000000000000000000000000000` | Circle Facilitator Service (`exact`) |
+| **BotChain Mainnet** | `677` | APAY | 18 | `0x4a781889Ce38c08B86b02e084A5A19609376b857` | BOF Microservice (`relay`) |
+| **BotChain Testnet** | `968` | APAY | 18 | `0xFd7bF688d5a772A81DfE39da502F69FD99cE92c7` | BOF Microservice (`relay`) |
 
-| Chain | ID | Asset | Facilitator |
-| --- | --- | --- | --- |
-| Arc Testnet (default in development) | 5042002 | USDC 6-dec `0x3600…0000` | Circle `api.circle.com/v1/facilitator/x402` |
-| Arc Mainnet (default in production) | 5042 | USDC 6-dec | Circle |
-| BotChain Testnet | 968 | APAY 18-dec | BOF |
-| BotChain Mainnet | 677 | APAY 18-dec | BOF |
+---
 
-Wallet connect lands on Arc. The switcher lists all four networks. DEX / HybridZap stays BotChain-only until an Arc AMM exists.
+## Deployed Smart Contracts
 
-## Run locally
+### Arc Mainnet (`5042`)
+* **`AgentPayRegistry` Proxy (`payTo` Vault):** [`0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0`](https://explorer.arc.io/address/0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0)
+* **`AgentPayRegistry` Implementation:** [`0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2`](https://explorer.arc.io/address/0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2)
+  * **Verified:** [Sourcify Exact Match](https://sourcify.dev/server/v2/contract/5042/0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2) (`match: exact_match`)
+* **ERC-8004 Agent Identity Registry:** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
+
+### Arc Testnet (`5042002`)
+* **`AgentPayRegistry` Proxy (`payTo` Vault):** [`0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2`](https://explorer.testnet.arc.io/address/0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2)
+* **`AgentPayRegistry` Implementation:** [`0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C`](https://explorer.testnet.arc.io/address/0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C)
+  * **Verified:** [Blockscout Testnet Explorer](https://explorer.testnet.arc.io/address/0x2729d7f32659b0fc1a483f4e400faa7b35440b2c)
+* **ERC-8004 Agent Identity Registry:** `0x8004A818BFB912233c491871b3d84c89A494BD9e`
+
+### BotChain Mainnet (`677`) & Testnet (`968`)
+* **`AgentPayRegistry` Vault:** `0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6`
+* **`APAYToken` UUPS Proxy (Mainnet):** `0x4a781889Ce38c08B86b02e084A5A19609376b857`
+* **`AgentPayHybridZap` UUPS Proxy (Mainnet):** `0x3dE7Ad9D36586C8aA69AD6d72c5F3aadE611689d`
+
+---
+
+## How It Works
+
+1. **User Connects Wallet:** The frontend connects via Privy (MetaMask, Rabby, WalletConnect, MiniPay) and defaults to **Arc Mainnet**.
+2. **Dynamic 402 Challenge:** When requesting an AI inference task (`/chat`, `/code`, `/image`):
+   - The backend computes token-exact pricing (vendor rate card + protocol margin).
+   - Returns an HTTP 402 `Payment Required` response challenge with EIP-712 payment requirements.
+3. **EIP-3009 Gasless Authorization:**
+   - On Arc, the user signs a `TransferWithAuthorization` for 6-decimal USDC (`0x3600...0000`).
+   - On BotChain, the user signs a transfer authorization for APAY.
+4. **Instant Verification & Settlement:**
+   - **Arc:** Verified and settled via Circle's Hosted Facilitator Service (`/v1/facilitator/x402`), routing directly to the `AgentPayRegistry` proxy vault.
+   - **BotChain:** Verified and settled via the BOF microservice.
+5. **AI Inference Execution:** Upstream LLM providers (Google Gemini 3.6 Flash, Anthropic Claude 3.5 Sonnet, Google Imagen 3) stream the completed response to the user.
+
+---
+
+## Local Development
 
 ```bash
-# backend
-cd backend && cp .env.example .env && npm install && npm run dev
+# 1. Clone repository
+git clone https://github.com/maziofweb3/agentpay.git
+cd agentpay
 
-# frontend (separate terminal)
-cd frontend && cp .env.example .env.local && npm install && npm run dev
+# 2. Run Backend
+cd backend
+cp .env.example .env.local
+npm install
+npm run dev
 
-# contracts
-cd contracts && forge test
+# 3. Run Frontend (in separate terminal)
+cd ../frontend
+cp .env.example .env.local
+npm install
+npm run dev
+
+# 4. Contracts Testing
+cd ../contracts
+forge test
 ```
 
-## Deploy
+---
 
-- **Vercel:** import this repo, Root Directory `frontend`.
-- **Render:** Blueprint from repo-root `render.yaml` (`rootDir: backend`, `buildFilter: backend/**`). Health check `/health`.
-- Secrets stay in the dashboards: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `CIRCLE_API_KEY_TESTNET`, `CIRCLE_API_KEY_MAINNET`, `SESSION_SECRET`.
+## Production Deployment
 
-Arc live settle: deploy Registry, set `AGENT_PAY_REGISTRY_ARC_*` and `PAYMENT_RECIPIENT_ADDRESS_ARC_*` to that proxy (the vault), put `CIRCLE_API_KEY_TESTNET` and `CIRCLE_API_KEY_MAINNET` on Render, faucet USDC for the **buyer** and **deployer**. Circle Facilitator pays settlement gas; the Registry does not need a funded signer.
-
-## Contracts (Arc)
-
-```bash
-# broadcast now (after deployer has native USDC for gas)
-forge script script/DeployArcRegistry.s.sol:DeployArcRegistry \
-  --rpc-url arc_testnet --broadcast --verify
-
-# later: APAY on Arc
-forge script script/DeployAPAYTokenArc.s.sol:DeployAPAYTokenArc --rpc-url arc_testnet --broadcast
-APAY_TOKEN_ADDRESS_ARC=0x... ARC_REGISTRY_PROXY=0x... \
-  forge script script/SetApayTokenArc.s.sol:SetApayTokenArc --rpc-url arc_testnet --broadcast
-```
-
-`initialize(owner)` stays owner-only. Arc USDC default is `configureArc()` after init so BotChain deploys are not pointed at `0x3600…0000`. Circle Facilitator settles **USDC only**; do not set APAY as the Arc 402 asset until a relayer exists.
+* **Render (Backend):** Connect `https://github.com/maziofweb3/agentpay`, specify Root Directory `backend`, build filter `backend/**`.
+* **Vercel (Frontend):** Connect `https://github.com/maziofweb3/agentpay`, specify Root Directory `frontend`.

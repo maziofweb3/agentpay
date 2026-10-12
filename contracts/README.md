@@ -1,85 +1,85 @@
-# AgentPay Smart Contracts (`agentpay_contracts`)
+# AgentPay Smart Contracts (`agentpay/contracts`)
 
-Smart contracts powering **AgentPay AI** on BotChain EVM networks (Testnet `968` & Mainnet `677`).
+> Smart contracts powering **AgentPay AI** on **Arc** (USDC micro-payment registry) and **BotChain** (`$APAY` token, liquidity zap, and registry vault).
 
 ---
 
 ## Deployed Contracts
 
-### BotChain Mainnet (Chain ID: `677`)
+### Arc Mainnet (Chain ID: `5042`)
 
-| Contract | Address | Type | Explorer |
+| Contract | Address | Type | Verification |
 | :--- | :--- | :--- | :--- |
-| **`APAYToken` (Proxy)** | `0x4a781889Ce38c08B86b02e084A5A19609376b857` | ERC1967Proxy (UUPS) | [scan.botchain.ai](https://scan.botchain.ai/address/0x4a781889Ce38c08B86b02e084A5A19609376b857) |
-| **`APAYToken` (Impl)** | `0xb518116FcDe70e6Ee64480Fc5161452b83DDE69c` | Implementation (Minter Role) | [scan.botchain.ai](https://scan.botchain.ai/address/0xb518116FcDe70e6Ee64480Fc5161452b83DDE69c) |
-| **`AgentPayHybridZap` (Proxy)** | `0x3dE7Ad9D36586C8aA69AD6d72c5F3aadE611689d` | ERC1967Proxy (UUPS) | [scan.botchain.ai](https://scan.botchain.ai/address/0x3dE7Ad9D36586C8aA69AD6d72c5F3aadE611689d) |
-| **`AgentPayHybridZap` (Impl)** | `0x8aE6aA6200b5B7C0a91e366302A5a6436381c5BC` | Implementation | [scan.botchain.ai](https://scan.botchain.ai/address/0x8aE6aA6200b5B7C0a91e366302A5a6436381c5BC) |
-| **`AgentPayRegistry`** | `0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6` | UUPS Registry Vault | [scan.botchain.ai](https://scan.botchain.ai/address/0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6) |
-| **USDT** | `0xaBabc7Ddc03e501d190C676BF3d92ef0e6e87a3C` | Standard ERC-20 (6 Decimals) | [scan.botchain.ai](https://scan.botchain.ai/address/0xaBabc7Ddc03e501d190C676BF3d92ef0e6e87a3C) |
-| **WBOT** | `0xD5452816194a3784dBa983426cCe7c122F4abd30` | Wrapped Native BOT (18 Decimals) | [scan.botchain.ai](https://scan.botchain.ai/address/0xD5452816194a3784dBa983426cCe7c122F4abd30) |
-| **BDEX V2 Factory** | `0x117115f3B72C8d1989178089A67D0C26f8EE0AA3` | Uniswap V2 Compatible Factory | [scan.botchain.ai](https://scan.botchain.ai/address/0x117115f3B72C8d1989178089A67D0C26f8EE0AA3) |
-| **BDEX V2 Router** | `0x1414eD29FdFD322c3c0a830330ed982E2D629e76` | Uniswap V2 Compatible Router | [scan.botchain.ai](https://scan.botchain.ai/address/0x1414eD29FdFD322c3c0a830330ed982E2D629e76) |
+| **`AgentPayRegistry` (Proxy)** | [`0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0`](https://explorer.arc.io/address/0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0) | ERC1967Proxy (UUPS) | [explorer.arc.io](https://explorer.arc.io/address/0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0) |
+| **`AgentPayRegistry` (Impl)** | [`0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2`](https://explorer.arc.io/address/0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2) | Implementation | [Sourcify Exact Match](https://sourcify.dev/server/v2/contract/5042/0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2) |
+| **USDC** | `0x3600000000000000000000000000000000000000` | Native Gas (18 dec) / ERC-20 (6 dec) | Predeployed System Contract |
+| **ERC-8004 Agent Identity** | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | Identity Registry | Predeployed |
+
+### Arc Testnet (Chain ID: `5042002`)
+
+| Contract | Address | Type | Verification |
+| :--- | :--- | :--- | :--- |
+| **`AgentPayRegistry` (Proxy)** | [`0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2`](https://explorer.testnet.arc.io/address/0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2) | ERC1967Proxy (UUPS) | [explorer.testnet.arc.io](https://explorer.testnet.arc.io/address/0xC3129d520A799E6E27C9Dd0BB7891Ac92B4146C2) |
+| **`AgentPayRegistry` (Impl)** | [`0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C`](https://explorer.testnet.arc.io/address/0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C) | Implementation | [Blockscout Verified](https://explorer.testnet.arc.io/address/0x2729d7f32659b0fc1a483f4e400faa7b35440b2c) |
+| **USDC** | `0x3600000000000000000000000000000000000000` | Native Gas (18 dec) / ERC-20 (6 dec) | Predeployed System Contract |
+| **ERC-8004 Agent Identity** | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | Identity Registry | Predeployed |
+
+### BotChain Mainnet (`677`) & Testnet (`968`)
+
+| Contract | Address | Network | Type |
+| :--- | :--- | :--- | :--- |
+| **`APAYToken` (Proxy)** | `0x4a781889Ce38c08B86b02e084A5A19609376b857` | Mainnet | ERC1967Proxy (UUPS) |
+| **`AgentPayHybridZap` (Proxy)**| `0x3dE7Ad9D36586C8aA69AD6d72c5F3aadE611689d` | Mainnet | ERC1967Proxy (UUPS) |
+| **`AgentPayRegistry`** | `0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6` | Mainnet & Testnet | Registry Vault |
+| **`APAYToken` (Proxy)** | `0xFd7bF688d5a772A81DfE39da502F69FD99cE92c7` | Testnet | ERC1967Proxy (UUPS) |
 
 ---
 
-### BotChain Testnet (Chain ID: `968`)
+## Contract Architecture & Features
 
-| Contract | Address | Type | Explorer |
-| :--- | :--- | :--- | :--- |
-| **`APAYToken` (Proxy)** | `0xFd7bF688d5a772A81DfE39da502F69FD99cE92c7` | ERC1967Proxy (UUPS) | [scan.bohr.life](https://scan.bohr.life/address/0xFd7bF688d5a772A81DfE39da502F69FD99cE92c7) |
-| **`APAYToken` (Impl)** | `0x2d0732DC2c0dC21E2b83DBe259b6Dbf94bb9BD35` | Implementation (Verified) | [scan.bohr.life](https://scan.bohr.life/address/0x2d0732DC2c0dC21E2b83DBe259b6Dbf94bb9BD35) |
-| **`AgentPayRegistry`** | `0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6` | UUPS Registry Vault | [scan.bohr.life](https://scan.bohr.life/address/0xc1eBB154EFf9bf9c08e39978E1447cC05e726dC6) |
+### 1. `AgentPayRegistry.sol`
+- **Arc Multi-Asset Ledger**: Serves as the vault and on-chain payment record ledger.
+- **USDC Default Routing**: Uses `configureArc()` to configure native/ERC-20 USDC (`0x3600...0000`) as the default accepted asset while leaving future pointers for `$APAY` tokens.
+- **UUPS Upgradeability**: Built on OpenZeppelin `Initializable`, `OwnableUpgradeable`, `PausableUpgradeable`, and `UUPSUpgradeable`.
 
----
+### 2. `APAYToken.sol`
+- **EIP-3009 Gasless Payments**: Gasless transfer authorizations via EIP-712 typed data signatures (`transferWithAuthorization`, `receiveWithAuthorization`).
+- **Deflationary Burns**: Implements `burn` and `burnFrom` for protocol fee burning.
+- **Authorized Minter Role**: Enables liquidity routers (like `AgentPayHybridZap`) to mint backing supply.
 
-## Core Smart Contract Features
-
-### 1. `APAYToken.sol`
-- **EIP-3009 Gasless Payments**: Implements `transferWithAuthorization`, `receiveWithAuthorization`, and `cancelAuthorization` using EIP-712 typed data signatures.
-- **ERC-20 Burnable**: Implements `burn` and `burnFrom` for on-chain deflationary token burning on protocol fee capture.
-- **Authorized Minter Role**: Enables designated liquidity protocols (such as `AgentPayHybridZap`) to mint exact backing tokens when reserve assets (USDT / WBOT) are deposited into liquidity pools.
-- **UUPS Upgradeability**: Follows OpenZeppelin's `UUPSUpgradeable` and `ERC1967Proxy` pattern with `onlyOwner` access control.
-
-### 2. `AgentPayHybridZap.sol` (1-Click Liquidity Zap)
-- **Single-Transaction Liquidity Provision**: Allows users to deposit pure USDT (or native BOT / WBOT) and automatically:
-  1. Calculates the required APAY pairing amount at the current pool reserve ratio (or initial price if bootstrapped).
-  2. Mints the exact matching APAY amount via authorized minter role.
-  3. Supplies both assets to the BDEX V2 Router to mint `APAY/USDT` or `APAY/WBOT` LP tokens.
-  4. Delivers the minted LP tokens directly to the user's wallet.
-  5. Refunds any excess dust to the user.
-- **Slippage & Safety Protections**: Accepts `minLpTokens` parameters and enforces deadline checks to protect against frontrunning and sandwich attacks.
-- **UUPS Upgradeable**: Built with OpenZeppelin `Initializable`, `OwnableUpgradeable`, `PausableUpgradeable`, and `UUPSUpgradeable`.
-
-### 3. `AgentPayRegistry.sol`
-- **Ledger Vault**: Stores prompt execution records and provides payment verification verification hooks for decentralized AI agents.
+### 3. `AgentPayHybridZap.sol`
+- **1-Click Liquidity Zap**: Automatically pairs deposited reserve assets (USDT / native BOT) with minted matching APAY and delivers BDEX V2 LP tokens to the depositor in a single atomic transaction.
 
 ---
 
 ## Testing & Verification
 
 ```bash
-# Run complete Foundry test suite (23/23 tests)
+# Run all Foundry tests (29/29 tests pass)
 forge test
 
-# Run tests with detailed traces
+# Run tests with execution traces
 forge test -vvv
-
-# Compile contracts
-forge build
 ```
 
 ---
 
 ## Deployment Scripts
 
+### Arc Deployment Scripts
 ```bash
-# Deploy Hybrid Zap to BotChain Mainnet
-forge script script/DeployHybridZapMainnet.s.sol:DeployHybridZapMainnet \
-  --rpc-url https://rpc.botchain.ai \
+# Deploy Arc Registry to Testnet
+forge script script/DeployArcRegistry.s.sol:DeployArcRegistry \
+  --rpc-url arc_testnet \
   --broadcast
 
-# Upgrade APAYToken Implementation on Mainnet
-forge script script/UpgradeAPAYTokenMainnet.s.sol:UpgradeAPAYTokenMainnet \
-  --rpc-url https://rpc.botchain.ai \
+# Deploy Arc Registry to Mainnet
+forge script script/DeployArcRegistry.s.sol:DeployArcRegistry \
+  --rpc-url arc_mainnet \
+  --broadcast
+
+# Future: Deploy APAY on Arc
+forge script script/DeployAPAYTokenArc.s.sol:DeployAPAYTokenArc \
+  --rpc-url arc_mainnet \
   --broadcast
 ```
