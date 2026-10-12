@@ -10,6 +10,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
 
+  const isProduction = getExpectedChainId() === 5042;
+  const defaultChain = isProduction ? arc : arcTestnet;
+  const supportedChains = isProduction
+    ? [arc, arcTestnet, botChain, botChainTestnet]
+    : [arcTestnet, arc, botChainTestnet, botChain];
+
   return (
     <PrivyProvider
       appId={appId}
@@ -21,8 +27,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           walletChainType: "ethereum-only",
         },
         loginMethods: ["wallet", "email"],
-        supportedChains: [arcTestnet, arc, botChainTestnet, botChain],
-        defaultChain: getExpectedChainId() === 5042 ? arc : arcTestnet,
+        supportedChains,
+        defaultChain,
         embeddedWallets: {
           createOnLogin: "users-without-wallets",
         },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { getExpectedChainId } from "@/lib/environment";
 import { addChainParams, chainById, isArcChainId } from "@/lib/chains";
@@ -157,9 +157,44 @@ export function useWallet() {
   );
 
   const defaultChainId = getExpectedChainId();
-  const defaultChainIdStr = String(defaultChainId);
-  const chainIdRaw = primaryWallet?.chainId ? String(primaryWallet.chainId).replace("eip155:", "") : defaultChainIdStr;
-  const currentChainId = parseInt(chainIdRaw, 10) || defaultChainId;
+  const [injectedChainId, setInjectedChainId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) return;
+    const eth = window.ethereum as {
+      request?: (args: { method: string }) => Promise<unknown>;
+      on?: (event: string, cb: (...args: unknown[]) => void) => void;
+      removeListener?: (event: string, cb: (...args: unknown[]) => void) => void;
+    };
+
+    if (eth.request) {
+      eth.request({ method: "eth_chainId" }).then((hex) => {
+        if (typeof hex === "string") {
+          const parsed = parseInt(hex, 16);
+          if (Number.isFinite(parsed) && parsed > 0) setInjectedChainId(parsed);
+        }
+      }).catch(() => {});
+    }
+
+    if (!eth.on) return;
+    const handleChainChanged = (hex: unknown) => {
+      if (typeof hex === "string") {
+        const parsed = parseInt(hex, 16);
+        if (Number.isFinite(parsed) && parsed > 0) setInjectedChainId(parsed);
+      }
+    };
+
+    eth.on("chainChanged", handleChainChanged);
+    return () => {
+      eth.removeListener?.("chainChanged", handleChainChanged);
+    };
+  }, []);
+
+  const chainIdRaw = primaryWallet?.chainId ? String(primaryWallet.chainId).replace("eip155:", "") : null;
+  const currentChainId =
+    (chainIdRaw ? parseInt(chainIdRaw, 10) : null) ||
+    injectedChainId ||
+    defaultChainId;
   const isTestnet = currentChainId === 968 || currentChainId === 5042002;
   const currentChainName = chainById(currentChainId).name;
   const isArc = isArcChainId(currentChainId);
