@@ -29,16 +29,27 @@ export function getArcRegistryAddress(isMainnet: boolean): string {
     : AGENT_PAY_REGISTRY_ARC_TESTNET_ADDRESS;
 }
 
-export const USDC_ADDRESS =
-  (process.env.NEXT_PUBLIC_USDC_ADDRESS ||
+export const USDC_ADDRESS_ARC_MAINNET =
+  (process.env.NEXT_PUBLIC_USDC_ADDRESS_ARC_MAINNET ||
+    process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS ||
+    process.env.NEXT_PUBLIC_USDC_ADDRESS ||
     "0x3600000000000000000000000000000000000000") as `0x${string}`;
+
+export const USDC_ADDRESS_ARC_TESTNET =
+  (process.env.NEXT_PUBLIC_USDC_ADDRESS_ARC_TESTNET ||
+    process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS ||
+    process.env.NEXT_PUBLIC_USDC_ADDRESS ||
+    "0x3600000000000000000000000000000000000000") as `0x${string}`;
+
+/** @deprecated Use USDC_ADDRESS_ARC_MAINNET or USDC_ADDRESS_ARC_TESTNET — kept for backward compat. */
+export const USDC_ADDRESS = USDC_ADDRESS_ARC_MAINNET;
 
 export const arc = defineChain({
   id: 5042,
   name: "Arc",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL || "https://rpc.mainnet.arc.io"] },
+    default: { http: [process.env.NEXT_PUBLIC_ARC_MAINNET_RPC || process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL || "https://rpc.mainnet.arc.io"] },
   },
   blockExplorers: {
     default: { name: "Arc Explorer", url: "https://explorer.arc.io" },
@@ -51,7 +62,7 @@ export const arcTestnet = defineChain({
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
   rpcUrls: {
     default: {
-      http: [process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL || "https://rpc.testnet.arc.io"],
+      http: [process.env.NEXT_PUBLIC_ARC_TESTNET_RPC || process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL || "https://rpc.testnet.arc.io"],
     },
   },
   blockExplorers: {
@@ -123,12 +134,12 @@ export function addChainParams(chainId: number) {
 
 export const publicClientArc = createPublicClient({
   chain: arc,
-  transport: http("https://rpc.mainnet.arc.io"),
+  transport: http(rpcUrlFor(arc.id)),
 });
 
 export const publicClientArcTestnet = createPublicClient({
   chain: arcTestnet,
-  transport: http("https://rpc.testnet.arc.io"),
+  transport: http(rpcUrlFor(arcTestnet.id)),
 });
 
 export const publicClientBotChain = createPublicClient({

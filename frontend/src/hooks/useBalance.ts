@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createPublicClient, formatUnits, http, isAddress } from "viem";
 import { botChain, chainById, isArcChainId, rpcUrlFor } from "@/lib/chains";
-import { TOKENS, ERC20_ABI } from "@/lib/tokens";
+import { TOKENS, ERC20_ABI, getArcTokens } from "@/lib/tokens";
 import { getExpectedChainId } from "@/lib/environment";
 
 export interface BalanceState {
@@ -69,7 +69,18 @@ export function useBalance(address: string | null | undefined, chainId?: number)
       }
 
       if (isArcChainId(resolvedChainId)) {
-        const usdcRaw = await safeReadContract(TOKENS.arc.USDC);
+        // Arc dual-view: USDC is exposed as both an ERC-20 (6 decimals) and
+        // native gas (18 decimals). Both views represent the same underlying
+        // pool, so we pick whichever is non-zero / larger — never add them.
+        const arcTokens = getArcTokens(resolvedChainId);
+        const [erc20Raw, nativeRaw] = await Promise.all([
+          safeReadContract(arcTokens.USDC),
+          safeGetBalance(address as `0x${string}`),
+        ]);
+        // Convert native 18-decimal units to 6-decimal ERC-20 scale
+        const nativeAsErc20 = nativeRaw / BigInt(1e12);
+        // Use the larger of the two views
+        const usdcRaw = erc20Raw > nativeAsErc20 ? erc20Raw : nativeAsErc20;
         const usdc = Number(formatUnits(usdcRaw, 6)).toFixed(4);
         setUsdcBalance(usdc);
         setApayBalance("0.00");
