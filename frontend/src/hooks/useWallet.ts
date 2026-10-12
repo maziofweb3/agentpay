@@ -12,8 +12,24 @@ export interface EthereumProvider {
 
 function getInjectedEthereum(): EthereumProvider | undefined {
   if (typeof window === "undefined") return undefined;
-  const eth = window.ethereum as unknown as EthereumProvider | undefined;
-  return eth?.request ? eth : undefined;
+  const eth = window.ethereum as any;
+  if (!eth) return undefined;
+
+  // When multiple wallet extensions are installed (e.g. MyTonWallet, Phantom, MetaMask):
+  if (Array.isArray(eth.providers) && eth.providers.length > 0) {
+    const metamask = eth.providers.find((p: any) => p.isMetaMask && !p.isTonWallet);
+    if (metamask?.request) return metamask;
+    const cleanEvm = eth.providers.find((p: any) => !p.isTonWallet && typeof p.request === "function");
+    if (cleanEvm?.request) return cleanEvm;
+  }
+
+  // If window.ethereum was wrapped/intercepted by TonWallet, inspect detected providers
+  if (eth.isTonWallet && Array.isArray(eth.detected)) {
+    const mm = eth.detected.find((p: any) => p.isMetaMask);
+    if (mm?.request) return mm;
+  }
+
+  return typeof eth.request === "function" ? eth : undefined;
 }
 
 export function isMiniPay(): boolean {
