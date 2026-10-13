@@ -87,7 +87,7 @@ export function cleanErrorMessage(rawMsg: string): string {
   if (msg.includes("Quota exceeded for metric")) {
     const retryMatch = msg.match(/Please retry in (\d+(?:\.\d+)?s?)/i);
     const retry = retryMatch ? ` - Retry in ${Math.round(parseFloat(retryMatch[1]))}s` : "";
-    return `Quota exceeded for gemini-3.6-flash (limit 20 req/day)${retry}`;
+    return `Quota exceeded for Gemini model${retry}`;
   }
 
   const firstLine = msg.split("\n")[0].replace(/["']/g, "").trim();

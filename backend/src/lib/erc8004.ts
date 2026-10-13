@@ -43,7 +43,7 @@ export function getAgentPayMetadata(): AgentMetadata {
   return {
     type: "Agent",
     name: "AgentPay AI",
-    description: "Pay-per-prompt AI on Arc (USDC x402) with BotChain APAY as an alternate rail.",
+    description: "Premier AI intelligence at ultra-low cost, charging strictly per use with USDC micropayments on Arc instead of bulky subscriptions.",
     image: "https://agentpay-ai.vercel.app/icon.png",
     endpoints: [
       { type: "a2a", url: "https://agentpay-ai.vercel.app/api" },

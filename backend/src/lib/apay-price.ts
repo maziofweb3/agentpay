@@ -16,6 +16,16 @@ export interface ModelRateCard {
  * Official Model Pricing Registry (Anthropic & Google Gemini AI Studio rate cards).
  */
 export const MODEL_RATES: Record<string, ModelRateCard> = {
+  "gemini-flash-lite-latest": {
+    name: "Google Gemini Flash Lite",
+    inMTokUsd: 0.075,
+    outMTokUsd: 0.30,
+  },
+  "gemini-flash-lite": {
+    name: "Google Gemini Flash Lite",
+    inMTokUsd: 0.075,
+    outMTokUsd: 0.30,
+  },
   "gemini-3.6-flash": {
     name: "Google Gemini 3.6 Flash",
     inMTokUsd: 1.50,
@@ -276,11 +286,9 @@ export interface PromptTokenBillingResult {
 export function formatApayTokens(tokens: number): string {
   const formatted =
     tokens % 1 === 0
-      ? tokens.toFixed(1)
-      : Number.isInteger(tokens * 100)
       ? tokens.toFixed(2)
       : tokens.toFixed(4);
-  return `${formatted} $APAY`;
+  return `${formatted} $USDC`;
 }
 
 /**
@@ -306,21 +314,21 @@ export function calculatePromptApayWei(
   let isImagen = false;
 
   if (normPath === "/api/chat") {
-    selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : "gemini-3.6-flash";
+    selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : "gemini-flash-lite-latest";
     serviceType = "chat";
   } else if (normPath === "/api/code") {
     selectedModelKey = "claude-3-5-sonnet";
     serviceType = "code";
   } else if (normPath === "/api/image") {
     if (input.hasImage) {
-      selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : "gemini-3.6-flash";
+      selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : "gemini-flash-lite-latest";
       serviceType = "image";
     } else {
       selectedModelKey = "imagen-3";
       isImagen = true;
     }
-  } else if (normPath === "/api/relay" || normPath === "/api/botchain/relay") {
-    selectedModelKey = "gemini-3.6-flash";
+  } else if (normPath === "/api/relay") {
+    selectedModelKey = "gemini-flash-lite-latest";
     serviceType = "relay";
   } else {
     return null;
@@ -332,7 +340,7 @@ export function calculatePromptApayWei(
     ? calculateOutputBudget(inputTokens, serviceType, promptStr, normPath)
     : 256;
 
-  const rateCard = MODEL_RATES[selectedModelKey] ?? MODEL_RATES["gemini-3.6-flash"];
+  const rateCard = MODEL_RATES[selectedModelKey] ?? MODEL_RATES["gemini-flash-lite-latest"];
 
   let rawComputeUsd = 0;
   if (rateCard.perItemUsd) {

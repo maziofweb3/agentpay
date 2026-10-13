@@ -162,11 +162,7 @@ export default function CodePage() {
     formattedAmount,
   } = usePaidService("code");
   const {
-    botBalance,
-    apayBalance,
     usdcBalance,
-    usdtBalance,
-    bousdtBalance,
     paymentBalance,
     paymentSymbol,
     loading: balanceLoading,
@@ -184,7 +180,7 @@ export default function CodePage() {
     if (!codeSnippet.trim() || loading || paidLoading) return;
     if (Number(paymentBalance) <= 0) {
       setError(
-        `Insufficient ${paymentSymbol} balance: your wallet currently has ${paymentBalance} ${paymentSymbol}. Top up on ${isArc ? "Arc" : "BotChain"} to pay for code security audits.`
+        `Insufficient USDC balance: your wallet currently has ${paymentBalance} USDC. Top up on Arc to pay for code security audits.`
       );
       return;
     }
@@ -213,11 +209,7 @@ export default function CodePage() {
     <main className="flex flex-col h-[calc(100dvh-0px)] max-w-md mx-auto bg-slate-950 text-slate-100 shadow-2xl border-x border-slate-800 overflow-hidden">
       <BalanceBar
         address={address}
-        botBalance={botBalance}
-        apayBalance={apayBalance}
         usdcBalance={usdcBalance}
-        usdtBalance={usdtBalance}
-        bousdtBalance={bousdtBalance}
         loading={balanceLoading}
         onRefresh={refetch}
         onDisconnect={disconnectWallet}
@@ -261,7 +253,7 @@ export default function CodePage() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            ✨ Gemini 3.6 Flash
+            ✨ Google Gemini Flash
           </button>
           <button
             onClick={() => setProvider("claude")}
@@ -292,7 +284,7 @@ export default function CodePage() {
         {/* Connect Wallet */}
         {!authenticated || !address ? (
           <div className="bg-purple-950/40 border border-purple-800/60 rounded-xl p-4 space-y-3 text-xs">
-            <p className="text-purple-100 font-medium">Connect a wallet to pay with $APAY</p>
+            <p className="text-purple-100 font-medium">Connect a wallet to pay with USDC on Arc</p>
             <button
               onClick={() => connectWallet()}
               className="w-full flex items-center justify-center space-x-2 bg-purple-500 hover:bg-purple-400 text-white font-semibold py-2.5 rounded-xl transition"
@@ -307,13 +299,13 @@ export default function CodePage() {
         {paymentStep === "signing" && (
           <div className="bg-amber-950/40 border border-amber-800/80 text-amber-300 rounded-xl p-3 text-xs flex items-center space-x-2 animate-pulse">
             <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-            <span>🔑 Sign {formattedAmount || "$APAY"} payment authorization in your wallet (0 gas)...</span>
+            <span>🔑 Sign {formattedAmount || "USDC"} payment authorization in your wallet (0 gas)...</span>
           </div>
         )}
         {paymentStep === "verifying" && (
           <div className="bg-emerald-950/40 border border-emerald-800/80 text-emerald-300 rounded-xl p-3 text-xs flex items-center space-x-2 animate-pulse">
             <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-            <span>🔍 Authorization signed! Verifying payment with BOF Facilitator...</span>
+            <span>🔍 Authorization signed! Verifying payment on Arc...</span>
           </div>
         )}
 

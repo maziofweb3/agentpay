@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { isAddress } from "viem";
 import { getExpectedChainId } from "@/lib/environment";
 import { addChainParams, chainById, isArcChainId } from "@/lib/chains";
 
@@ -62,12 +63,19 @@ export function useWallet() {
   const primaryWallet =
     wallets.find((w) => w.walletClientType !== "privy") || wallets[0];
   // Only expose wallet address when Privy session is authenticated
-  const address = authenticated ? (primaryWallet?.address || user?.wallet?.address || null) : null;
+  const [injectedAddress, setInjectedAddress] = useState<string | null>(null);
+  const [userSelectedChainId, setUserSelectedChainId] = useState<number | null>(null);
+
+  // Detect active address reactively from Privy primary wallet, injected accounts, or Privy user
+  const rawAddress =
+    (primaryWallet?.address && isAddress(primaryWallet.address) ? primaryWallet.address : null) ||
+    (injectedAddress && isAddress(injectedAddress) ? injectedAddress : null) ||
+    (user?.wallet?.address && isAddress(user.wallet.address) ? user.wallet.address : null) ||
+    null;
+  const address = authenticated || Boolean(injectedAddress) ? rawAddress : null;
 
   /**
    * EIP-1193 provider for the active Privy wallet, falling back to window.ethereum.
-   * Payment must use this — bare window.ethereum often points at a different wallet
-   * than the one Privy authenticated, which causes eth_requestAccounts to hang.
    */
   const getProvider = useCallback(async (): Promise<EthereumProvider | undefined> => {
     if (primaryWallet) {
@@ -85,16 +93,15 @@ export function useWallet() {
 
   const disconnectWallet = useCallback(async () => {
     try {
-      // Disconnect active connected wallets from Privy state
       for (const wallet of wallets) {
         if (typeof wallet.disconnect === "function") {
           await wallet.disconnect();
         }
       }
-      // Logout from Privy session if authenticated
       if (authenticated) {
         await logout();
       }
+      setInjectedAddress(null);
     } catch (err) {
       console.error("Wallet disconnect error:", err);
     }
@@ -112,45 +119,25 @@ export function useWallet() {
 
   const switchOrAddChain = useCallback(
     async (chainId = getExpectedChainId()) => {
+      setUserSelectedChainId(chainId);
+      if (typeof window !== "undefined") {
+        (window as any).__agentpayChainId = chainId;
+      }
       const chainIdHex = `0x${chainId.toString(16)}`;
       const chainParams = addChainParams(chainId);
 
+      // Primary path: let Privy switchChain manage the wallet prompt
       if (primaryWallet) {
         try {
           await primaryWallet.switchChain(chainId);
           return;
-        } catch {
-          try {
-            const provider = (await primaryWallet.getEthereumProvider()) as EthereumProvider;
-            if (provider?.request) {
-              try {
-                await provider.request({
-                  method: "wallet_switchEthereumChain",
-                  params: [{ chainId: chainIdHex }],
-                });
-                return;
-              } catch (switchErr: unknown) {
-                const err = switchErr as { code?: number; message?: string };
-                if (
-                  err.code === 4902 ||
-                  err.message?.includes("Unrecognized chain") ||
-                  err.message?.includes("Could not find chain")
-                ) {
-                  await provider.request({
-                    method: "wallet_addEthereumChain",
-                    params: [chainParams],
-                  });
-                  return;
-                }
-              }
-            }
-          } catch (providerErr) {
-            console.error("Provider switch error:", providerErr);
-          }
+        } catch (privyErr) {
+          console.warn("[wallet] primaryWallet.switchChain fallback to EIP-1193:", privyErr);
         }
       }
 
-      const eth = getInjectedEthereum();
+      // Secondary fallback path: direct EIP-1193 provider switch/add
+      const eth = (primaryWallet ? await primaryWallet.getEthereumProvider() : getInjectedEthereum()) as EthereumProvider | undefined;
       if (eth?.request) {
         try {
           await eth.request({
@@ -179,13 +166,6 @@ export function useWallet() {
     [primaryWallet]
   );
 
-  const switchOrAddBotChain = useCallback(
-    async (isTestnet = true) => {
-      await switchOrAddChain(isTestnet ? 968 : 677);
-    },
-    [switchOrAddChain]
-  );
-
   const defaultChainId = getExpectedChainId();
   const [injectedChainId, setInjectedChainId] = useState<number | null>(null);
 
@@ -206,7 +186,18 @@ export function useWallet() {
           .then((hex) => {
             if (typeof hex === "string") {
               const parsed = parseInt(hex, 16);
-              if (Number.isFinite(parsed) && parsed > 0) setInjectedChainId(parsed);
+              if (Number.isFinite(parsed) && parsed > 0) {
+                setInjectedChainId(parsed);
+              }
+            }
+          })
+          .catch(() => {});
+
+        injected
+          .request({ method: "eth_accounts" })
+          .then((accounts: unknown) => {
+            if (Array.isArray(accounts) && accounts[0] && isAddress(accounts[0])) {
+              setInjectedAddress(accounts[0]);
             }
           })
           .catch(() => {});
@@ -219,28 +210,43 @@ export function useWallet() {
     const handleChainChanged = (hex: unknown) => {
       if (typeof hex === "string") {
         const parsed = parseInt(hex, 16);
-        if (Number.isFinite(parsed) && parsed > 0) setInjectedChainId(parsed);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          setInjectedChainId(parsed);
+          setUserSelectedChainId(parsed);
+          (window as any).__agentpayChainId = parsed;
+        }
+      }
+    };
+
+    const handleAccountsChanged = (accounts: unknown) => {
+      if (Array.isArray(accounts) && accounts[0] && isAddress(accounts[0])) {
+        setInjectedAddress(accounts[0]);
+      } else {
+        setInjectedAddress(null);
       }
     };
 
     injected.on("chainChanged", handleChainChanged);
+    injected.on("accountsChanged", handleAccountsChanged);
     return () => {
       injected.removeListener?.("chainChanged", handleChainChanged);
+      injected.removeListener?.("accountsChanged", handleAccountsChanged);
     };
   }, []);
 
   const chainIdRaw = primaryWallet?.chainId ? String(primaryWallet.chainId).replace("eip155:", "") : null;
   const currentChainId =
+    userSelectedChainId ||
     (chainIdRaw ? parseInt(chainIdRaw, 10) : null) ||
     injectedChainId ||
     defaultChainId;
-  const isTestnet = currentChainId === 968 || currentChainId === 5042002;
+  const isTestnet = currentChainId === 5042002;
   const currentChainName = chainById(currentChainId).name;
-  const isArc = isArcChainId(currentChainId);
+  const isArc = true; // Always Arc
 
   return {
     address,
-    authenticated,
+    authenticated: authenticated || Boolean(injectedAddress),
     ready,
     user,
     wallets,
@@ -255,7 +261,6 @@ export function useWallet() {
     connectWallet,
     disconnectWallet,
     switchOrAddChain,
-    switchOrAddBotChain,
     getProvider,
   };
 }

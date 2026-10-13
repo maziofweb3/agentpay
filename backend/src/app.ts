@@ -87,6 +87,10 @@ app.use(
       "X-AgentPay-Payment-Tx",
       "PAYMENT-SIGNATURE",
       "X-Payment",
+      "X-Network",
+      "X-Chain-Id",
+      "x-network",
+      "x-chain-id",
     ],
     exposedHeaders: [
       "Payment-Required",
@@ -142,7 +146,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 const defaultNet = getDefaultNetwork();
-const activeBotChainCaip = defaultNet.caip2;
+const activeCaip = defaultNet.caip2;
 const activeChainId = defaultNet.chainId;
 const activeRpcUrl = defaultNet.rpcUrl;
 const apayAddress = defaultNet.asset;
@@ -153,12 +157,12 @@ for (const net of allNetworks()) {
   server.register(net.caip2, new ExactEvmScheme());
 }
 
-// GET /api/price — returns current APAY token price status, single source of truth matrix, and cache info
+// GET /api/price — returns current pricing status and cache info
 app.get("/api/price", async (_req: Request, res: Response) => {
   const priceInfo = await getApayPriceUsd();
   return res.json({
     status: "ok",
-    token: "APAY",
+    token: "USDC",
     ...priceInfo,
   });
 });
@@ -183,8 +187,7 @@ const healthHandler = async (_req: Request, res: Response) => {
     chainId: defaultNet.chainId,
     paymentAsset: defaultNet.assetSymbol,
     paymentAssetOnly: false,
-    apayAsset: getNetwork("eip155:968").asset,
-    usdcAsset: getNetwork("eip155:5042002").asset,
+    usdcAsset: defaultNet.asset,
     apayPriceUsd: priceInfo.priceUsd,
     apayPriceSource: priceInfo.source,
     baseComputeUnitUsd: priceInfo.baseComputeUnitUsd,
@@ -202,7 +205,6 @@ const healthHandler = async (_req: Request, res: Response) => {
       asset: n.asset,
       decimals: n.decimals,
     })),
-    relayEndpoint: "/api/botchain/relay",
     payTo: defaultNet.payTo,
     payToType: "AgentPayRegistry UUPS ERC1967 Proxy Smart Contract Vault",
     facilitator: facilitatorHealth.default,
@@ -253,6 +255,21 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
     return next();
   }
 
+  const requestedNetworkHeader = (
+    req.headers["x-network"] ||
+    req.headers["x-chain-id"] ||
+    (req.body && (req.body.network || req.body.chainId))
+  ) as string | number | undefined;
+
+  let requestedNet = defaultNet;
+  if (requestedNetworkHeader !== undefined && requestedNetworkHeader !== "") {
+    try {
+      requestedNet = getNetwork(String(requestedNetworkHeader));
+    } catch {
+      requestedNet = defaultNet;
+    }
+  }
+
   // ★ Pre-Flight Quota Check — reject BEFORE payment challenge if model key is out of quota
   const resolvedProvider: AIProvider = provider === "claude" ? "claude" : "gemini";
   const quotaCheck = checkQuotaStatus(resolvedProvider);
@@ -267,7 +284,7 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
       tool: fullPath,
       error: `AI provider (${resolvedProvider}) free-tier quota is currently exhausted. Please retry in ${quotaCheck.retryInSec}s or switch model provider.`,
       errorType: "rate_limit",
-      hint: `Google AI Studio free-tier limit reached (20 req/day for gemini-3.6-flash). Retry in ${quotaCheck.retryInSec}s or select Claude 3.5.`,
+      hint: `Google AI Studio free-tier rate limit reached. Retry in ${quotaCheck.retryInSec}s or select Claude 3.5.`,
       retryInSeconds: quotaCheck.retryInSec,
       timestamp: new Date().toISOString(),
     });
@@ -307,8 +324,9 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
       );
 
       const payNet = getNetwork(
-        payload.network ?? payload.accepted?.network ?? defaultNet.caip2
+        payload.network ?? payload.accepted?.network ?? requestedNet.caip2
       );
+      (req as any).activeNetwork = payNet;
       const requiredAmount = requiredOn(payNet);
       const paymentValue = BigInt(payload.value ?? payload.payload?.authorization?.value ?? "0");
       if (paymentValue < requiredAmount) {
@@ -405,8 +423,8 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
       activity("payment.x402_fail", { path: fullPath, reason: msg }, "warn");
       return res.status(402).json({
         error: msg,
-        paymentAsset: defaultNet.assetSymbol,
-        network: defaultNet.caip2,
+        paymentAsset: requestedNet.assetSymbol,
+        network: requestedNet.caip2,
       });
     }
   }
@@ -416,13 +434,14 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
     req.headers["x-agentpay-payment-tx"]) as string | undefined;
   if (txHash) {
     try {
+      (req as any).activeNetwork = requestedNet;
       const result = await verifyUsdtTransferPayment({
         txHash,
         apayAddress,
         payTo: payToAddress,
-        minAmountAtomic: requiredOn(defaultNet),
-        chainId: defaultNet.chainId,
-        rpcUrl: defaultNet.rpcUrl,
+        minAmountAtomic: requiredOn(requestedNet),
+        chainId: requestedNet.chainId,
+        rpcUrl: requestedNet.rpcUrl,
       });
       activity("payment.transfer_ok", {
         path: fullPath,
@@ -465,10 +484,10 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
       );
       return res.status(402).json({
         error: message,
-        paymentAsset: "USDT",
-        payTo: payToAddress,
-        requiredAmount: requiredOn(defaultNet).toString(),
-        network: defaultNet.caip2,
+        paymentAsset: requestedNet.assetSymbol,
+        payTo: requestedNet.payTo,
+        requiredAmount: requiredOn(requestedNet).toString(),
+        network: requestedNet.caip2,
       });
     }
   }
@@ -477,7 +496,8 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
   const auth = req.headers["authorization"];
   if (auth) {
     try {
-      const paid = trySessionPayment(auth, requiredOn(defaultNet), fullPath);
+      (req as any).activeNetwork = requestedNet;
+      const paid = trySessionPayment(auth, requiredOn(requestedNet), fullPath);
       if (paid) {
         res.setHeader("X-AgentPay-Charged", paid.chargedAtomic.toString());
         res.setHeader("X-AgentPay-Remaining", paid.remainingAtomic.toString());
@@ -495,6 +515,8 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
   }
 
   // 3) Fallback x402 Challenge — clean 402 response with dynamic pre-challenge token billing
+  const challengeNet = requestedNet;
+
   activity("payment.challenge", {
     path: fullPath,
     modelKey,
@@ -505,26 +527,27 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
     profitUsd,
     computeCostUsd: targetUsdCost,
     apayPriceUsd: priceInfo.priceUsd,
-    requiredAmount: requiredOn(defaultNet).toString(),
-    requiredAmountFormatted: formatPayment(requiredOn(defaultNet), defaultNet),
-    network: defaultNet.caip2,
+    requiredAmount: requiredOn(challengeNet).toString(),
+    requiredAmountFormatted: formatPayment(requiredOn(challengeNet), challengeNet),
+    network: challengeNet.caip2,
   });
 
+  const availableNetworks = allNetworks().filter((n) => n.payTo);
+  availableNetworks.sort((a, b) => (a.caip2 === challengeNet.caip2 ? -1 : b.caip2 === challengeNet.caip2 ? 1 : 0));
+
   const paymentAccept = {
-    accepts: allNetworks()
-      .filter((n) => n.payTo)
-      .map((n) => ({
-        scheme: "exact",
-        network: n.caip2,
-        amount: requiredOn(n).toString(),
-        asset: n.asset,
-        payTo: n.payTo,
-        extra: {
-          name: n.eip712Name,
-          version: n.eip712Version,
-          assetTransferMethod: "eip3009",
-        },
-      })),
+    accepts: availableNetworks.map((n) => ({
+      scheme: "exact",
+      network: n.caip2,
+      amount: requiredOn(n).toString(),
+      asset: n.asset,
+      payTo: n.payTo,
+      extra: {
+        name: n.eip712Name,
+        version: n.eip712Version,
+        assetTransferMethod: "eip3009",
+      },
+    })),
   };
 
   const headerBase64 = Buffer.from(JSON.stringify(paymentAccept)).toString(
@@ -534,11 +557,11 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
   res.setHeader("Payment-Required", headerBase64);
 
   return res.status(402).json({
-    error: `Payment required: ${formatPayment(requiredOn(defaultNet), defaultNet)}`,
+    error: `Payment required: ${formatPayment(requiredOn(challengeNet), challengeNet)}`,
     accepts: paymentAccept.accepts,
-    paymentAsset: defaultNet.assetSymbol,
-    requiredAmount: requiredOn(defaultNet).toString(),
-    requiredAmountFormatted: formatPayment(requiredOn(defaultNet), defaultNet),
+    paymentAsset: challengeNet.assetSymbol,
+    requiredAmount: requiredOn(challengeNet).toString(),
+    requiredAmountFormatted: formatPayment(requiredOn(challengeNet), challengeNet),
     modelKey,
     modelName,
     inputTokens,
@@ -548,8 +571,8 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
     totalUsd: targetUsdCost,
     computeCostUsd: targetUsdCost,
     apayPriceUsd: priceInfo.priceUsd,
-    network: defaultNet.caip2,
-    payTo: defaultNet.payTo,
+    network: challengeNet.caip2,
+    payTo: challengeNet.payTo,
   });
 });
 
@@ -569,9 +592,31 @@ app.post("/api/chat", async (req: Request, res: Response) => {
   }
   const prompt = validated.value;
   const provider: AIProvider = body.provider === "claude" ? "claude" : "gemini";
+
+  const requestedNetHeader = (
+    req.headers["x-network"] ||
+    req.headers["x-chain-id"] ||
+    body.network ||
+    body.chainId
+  ) as string | number | undefined;
+  let activeNet = (req as any).activeNetwork;
+  if (!activeNet && requestedNetHeader !== undefined && requestedNetHeader !== "") {
+    try {
+      activeNet = getNetwork(String(requestedNetHeader));
+    } catch {
+      activeNet = defaultNet;
+    }
+  }
+  if (!activeNet) {
+    activeNet = defaultNet;
+  }
+  const networkName = activeNet?.name;
+
   activity("ai.chat", {
     phase: "start",
     provider,
+    network: activeNet?.caip2,
+    networkName,
     promptPreview: preview(prompt),
   });
 
@@ -586,7 +631,8 @@ app.post("/api/chat", async (req: Request, res: Response) => {
   const result = await generateChatResponse(
     prompt,
     provider,
-    billing?.outputTokenBudget
+    billing?.outputTokenBudget,
+    networkName
   );
   if (!result.ok) {
     const status = aiErrorStatus(result.errorType);
@@ -863,7 +909,7 @@ app.post("/api/credits/deposit", async (req: Request, res: Response) => {
     payTo: payToAddress,
     chainId: activeChainId,
     rpcUrl: activeRpcUrl,
-    network: activeBotChainCaip,
+    network: activeCaip,
   });
 });
 

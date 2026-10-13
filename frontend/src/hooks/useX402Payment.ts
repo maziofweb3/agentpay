@@ -3,12 +3,8 @@
 import { useState } from "react";
 import {
   createPublicClient,
-  createWalletClient,
-  custom,
-  encodeFunctionData,
   http,
   isAddress,
-  type Hash,
 } from "viem";
 import { addChainParams, chainById, rpcUrlFor } from "@/lib/chains";
 import { formatPaymentAtomic } from "@/lib/pricing";
@@ -18,26 +14,8 @@ export interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 }
 
-/** Header the API uses to accept a verified on-chain USDT transfer as payment (legacy). */
-export const PAYMENT_TX_HEADER = "X-AgentPay-Payment-Tx";
-
-const BOTCHAIN_IDS = new Set([968, 677]);
 const USER_ACTION_TIMEOUT_MS = 120_000;
-const RECEIPT_TIMEOUT_MS = 120_000;
 const SILENT_RPC_TIMEOUT_MS = 8_000;
-
-const ERC20_TRANSFER_ABI = [
-  {
-    name: "transfer",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-  },
-] as const;
 
 interface PaymentAccept {
   scheme: string;
@@ -62,6 +40,7 @@ export interface PayRequestOptions {
   preferTestnet?: boolean;
   provider?: EthereumProvider | null;
   account?: `0x${string}` | string | null;
+  chainId?: number;
   switchChain?: (chainId: number) => Promise<void>;
 }
 
@@ -114,39 +93,7 @@ function mergeHeaders(base: RequestInit, extra: Record<string, string>): Request
   };
 }
 
-async function errorFromResponse(response: Response): Promise<string> {
-  const status = response.status;
-  let body = "";
-  try {
-    body = await response.text();
-  } catch {
-    /* ignore */
-  }
-
-  let parsed: Record<string, unknown> | null = null;
-  try {
-    parsed = body ? (JSON.parse(body) as Record<string, unknown>) : null;
-  } catch {
-    /* not JSON */
-  }
-
-  const message =
-    (typeof parsed?.error === "string" && parsed.error) ||
-    (typeof parsed?.message === "string" && parsed.message) ||
-    body.slice(0, 200) ||
-    response.statusText;
-
-  if (status === 402) {
-    return `Payment required or settlement failed. ${message}`;
-  }
-  if (status === 503) {
-    return `Service unavailable: ${message}`;
-  }
-  return `HTTP ${status}: ${message}`;
-}
-
-function decodePaymentRequired(response: Response): PaymentAccept | null {
-  // Header names are case-insensitive in Fetch, but some proxies rename them.
+function decodePaymentRequired(response: Response, preferredChainId?: number): PaymentAccept | null {
   const candidates = [
     "payment-required",
     "Payment-Required",
@@ -159,7 +106,6 @@ function decodePaymentRequired(response: Response): PaymentAccept | null {
     if (raw) break;
   }
 
-  // Fallback: scan all exposed headers (helps when casing/proxy differs).
   if (!raw) {
     try {
       response.headers.forEach((value, key) => {
@@ -175,8 +121,7 @@ function decodePaymentRequired(response: Response): PaymentAccept | null {
   if (!raw) {
     console.warn(
       "[agentpay] 402 without readable payment-required header. " +
-        "If this is a cross-origin call, the API must set Access-Control-Expose-Headers. " +
-        "Prefer same-origin /api/* via Next rewrites."
+        "Ensure the API sets Access-Control-Expose-Headers."
     );
     return null;
   }
@@ -185,9 +130,10 @@ function decodePaymentRequired(response: Response): PaymentAccept | null {
     const pad = "=".repeat((4 - (raw.length % 4)) % 4);
     const json = JSON.parse(atob(raw + pad)) as { accepts?: PaymentAccept[] };
     const accepts = json.accepts ?? [];
-    const preferred = (globalThis as { __agentpayChainId?: number }).__agentpayChainId;
+    const preferred = preferredChainId || (globalThis as { __agentpayChainId?: number }).__agentpayChainId;
     const accept =
-      accepts.find((a) => a.network === `eip155:${preferred}`) ||
+      (preferred ? accepts.find((a) => a.network === `eip155:${preferred}`) : undefined) ||
+      accepts.find((a) => a.network === "eip155:5042") ||
       accepts.find((a) => a.network?.includes("5042")) ||
       accepts[0];
     if (!accept?.asset || !accept?.payTo || !accept?.amount || !accept?.network) {
@@ -207,13 +153,13 @@ function chainFromCaip(network: string): {
   rpcUrl: string;
   isTestnet: boolean;
 } {
-  const chainId = parseInt(network.split(":").pop() || "5042002", 10);
+  const chainId = parseInt(network.split(":").pop() || "5042", 10);
   const chain = chainById(chainId);
   return {
     chainId,
     chain,
     rpcUrl: rpcUrlFor(chainId),
-    isTestnet: chainId === 968 || chainId === 5042002,
+    isTestnet: chainId === 5042002,
   };
 }
 
@@ -304,7 +250,7 @@ async function ensureChain(
           params: [chainParams],
         }),
         USER_ACTION_TIMEOUT_MS,
-        "Add BotChain network"
+        `Add ${target.chain.name} network`
       );
     } else if (err.code === 4001) {
       throw new Error(
@@ -334,8 +280,8 @@ async function ensureChain(
 /**
  * Sign an EIP-3009 TransferWithAuthorization using eth_signTypedData_v4.
  *
- * This is a pure signature — no gas, no on-chain transaction from the user.
- * The backend verifies the signature via BOF and the relayer settles on-chain.
+ * This is a pure gasless signature from the user.
+ * The backend verifies the signature and Circle/Facilitator settles on-chain.
  */
 async function signEip3009Authorization(
   ethereum: EthereumProvider,
@@ -356,30 +302,38 @@ async function signEip3009Authorization(
     );
   }
 
-  // ★ On-Chain Balance Check — Stop immediately if user balance < required APAY amount
+  // Dual-view balance check on Arc
   const publicClient = createPublicClient({
     chain: target.chain,
     transport: http(target.rpcUrl),
   });
-  const userBalance = await publicClient.readContract({
-    address: accept.asset,
-    abi: [
-      {
-        name: "balanceOf",
-        type: "function",
-        stateMutability: "view",
-        inputs: [{ name: "account", type: "address" }],
-        outputs: [{ type: "uint256" }],
-      },
-    ] as const,
-    functionName: "balanceOf",
-    args: [account],
-  });
+
+  const [erc20Raw, nativeRaw] = await Promise.all([
+    publicClient.readContract({
+      address: accept.asset,
+      abi: [
+        {
+          name: "balanceOf",
+          type: "function",
+          stateMutability: "view",
+          inputs: [{ name: "account", type: "address" }],
+          outputs: [{ type: "uint256" }],
+        },
+      ] as const,
+      functionName: "balanceOf",
+      args: [account],
+    }).catch(() => BigInt(0)),
+    publicClient.getBalance({ address: account }).catch(() => BigInt(0)),
+  ]);
+
+  const nativeAsErc20 = nativeRaw / BigInt(1e12);
+  const effectiveBalance = erc20Raw > nativeAsErc20 ? erc20Raw : nativeAsErc20;
   const requiredValue = BigInt(accept.amount ?? "0");
   const paymentAsset = getPaymentAsset(target.chainId);
-  if (userBalance < requiredValue) {
+
+  if (effectiveBalance < requiredValue) {
     const userFormatted = formatPaymentAtomic(
-      userBalance.toString(),
+      effectiveBalance.toString(),
       paymentAsset.decimals,
       paymentAsset.symbol
     );
@@ -389,7 +343,7 @@ async function signEip3009Authorization(
       paymentAsset.symbol
     );
     throw new Error(
-      `Insufficient balance: wallet has ${userFormatted}, but ${reqFormatted} is required.`
+      `Insufficient balance: connected wallet has ${userFormatted}, but ${reqFormatted} is required on Arc.`
     );
   }
 
@@ -423,8 +377,8 @@ async function signEip3009Authorization(
       ],
     },
     domain: {
-      name: accept.extra?.name ?? (target.chainId === 5042 || target.chainId === 5042002 ? "USDC" : "AgentPay Token"),
-      version: accept.extra?.version ?? (target.chainId === 5042 || target.chainId === 5042002 ? "2" : "1"),
+      name: accept.extra?.name ?? "USDC",
+      version: accept.extra?.version ?? "2",
       chainId: target.chainId,
       verifyingContract: accept.asset,
     },
@@ -432,7 +386,7 @@ async function signEip3009Authorization(
     message: {
       from: account,
       to: accept.payTo,
-      value: accept.amount, // atomic string from 402 challenge (e.g. "1000000000000000000")
+      value: accept.amount,
       validAfter: validAfter.toString(),
       validBefore: validBefore.toString(),
       nonce,
@@ -445,7 +399,7 @@ async function signEip3009Authorization(
     paymentAsset.symbol
   );
   console.info(
-    `[agentpay] signing EIP-3009 auth → from=${account} to=${accept.payTo} amount=${formattedAmount} (${accept.amount} wei)`
+    `[agentpay] signing EIP-3009 auth → from=${account} to=${accept.payTo} amount=${formattedAmount}`
   );
 
   const signature = (await withTimeout(
@@ -457,7 +411,7 @@ async function signEip3009Authorization(
     "Payment authorization signature"
   )) as string;
 
-  console.info("[agentpay] EIP-3009 auth signed");
+  console.info("[agentpay] EIP-3009 auth signed successfully");
 
   return {
     from: account,
@@ -468,75 +422,6 @@ async function signEip3009Authorization(
     nonce,
     signature,
   };
-}
-
-/**
- * Legacy: pay with a raw on-chain ERC-20 transfer (kept as fallback for old servers).
- * Not called by the primary flow anymore — EIP-3009 sign is used instead.
- */
-async function payExactUsdtTransfer(
-  ethereum: EthereumProvider,
-  accept: PaymentAccept,
-  opts: PayRequestOptions
-): Promise<Hash> {
-  const target = chainFromCaip(accept.network);
-  if (!BOTCHAIN_IDS.has(target.chainId)) {
-    throw new Error(`Unsupported payment network ${accept.network}`);
-  }
-
-  const account = await resolveAccount(ethereum, opts.account);
-  await ensureChain(ethereum, target, opts.switchChain);
-
-  const amount = BigInt(accept.amount);
-  if (amount <= BigInt(0)) {
-    throw new Error("Invalid payment amount in 402 challenge.");
-  }
-
-  const asset = accept.asset || getPaymentAsset(target.chainId).address;
-
-  const walletClient = createWalletClient({
-    account,
-    chain: target.chain,
-    transport: custom(ethereum as unknown as Parameters<typeof custom>[0]),
-  });
-  const publicClient = createPublicClient({
-    chain: target.chain,
-    transport: http(target.rpcUrl),
-  });
-
-  const data = encodeFunctionData({
-    abi: ERC20_TRANSFER_ABI,
-    functionName: "transfer",
-    args: [accept.payTo, amount],
-  });
-
-  const hash = await withTimeout(
-    walletClient.sendTransaction({
-      account,
-      chain: target.chain,
-      to: asset,
-      data,
-      value: BigInt(0),
-    }),
-    USER_ACTION_TIMEOUT_MS,
-    "APAY payment confirmation"
-  );
-
-  const receipt = await withTimeout(
-    publicClient.waitForTransactionReceipt({
-      hash,
-      confirmations: 1,
-      timeout: RECEIPT_TIMEOUT_MS,
-    }),
-    RECEIPT_TIMEOUT_MS + 5_000,
-    "APAY payment receipt"
-  );
-
-  if (receipt.status !== "success") {
-    throw new Error("APAY payment failed on-chain. No charge was completed.");
-  }
-
-  return hash;
 }
 
 async function parseResponseOrThrow<T>(res: Response): Promise<T> {
@@ -585,9 +470,8 @@ export function useX402Payment() {
   /**
    * Single-click x402 payment flow:
    *  1. POST unpaid → 402 challenge (payTo / asset / amount / extra)
-   *  2. Sign EIP-3009 TransferWithAuthorization (wallet sign popup, no gas)
-   *  3. Re-send with X-Payment: base64(signed payload) → backend verifies via BOF + serves response
-   *  4. Backend settles on-chain via BOF asynchronously after response
+   *  2. Sign EIP-3009 TransferWithAuthorization (wallet sign popup, gasless)
+   *  3. Re-send with X-Payment: base64(signed payload) → backend verifies + serves response
    */
   async function executePaidRequest<T = unknown>(
     url: string,
@@ -613,7 +497,7 @@ export function useX402Payment() {
         return await parseResponseOrThrow<T>(probe);
       }
 
-      const accept = decodePaymentRequired(probe);
+      const accept = decodePaymentRequired(probe, payOpts.chainId);
       if (!accept) {
         throw new Error(
           `Payment required, but the server did not return a parseable challenge.`
@@ -630,7 +514,7 @@ export function useX402Payment() {
       const account = await resolveAccount(ethereum, payOpts.account as string);
       await ensureChain(ethereum, chainFromCaip(accept.network), payOpts.switchChain);
 
-      // Step 2: Sign EIP-3009 authorization (signature popup — no gas, no tx confirmation)
+      // Step 2: Sign EIP-3009 authorization (signature popup — gasless)
       const paidAsset = getPaymentAsset(chainFromCaip(accept.network).chainId);
       const paidFormatted = formatPaymentAtomic(
         accept.amount,
@@ -641,7 +525,6 @@ export function useX402Payment() {
       setStep("signing");
       const authPayload = await signEip3009Authorization(ethereum, accept, account);
 
-      // btoa produces standard base64; backend decodes with Buffer.from(str, "base64") ✓
       const xPayment = btoa(
         JSON.stringify({
           ...authPayload,
@@ -649,9 +532,9 @@ export function useX402Payment() {
           asset: accept.asset,
         })
       );
-      setTxHash(authPayload.nonce); // use nonce as the reference token
+      setTxHash(authPayload.nonce);
 
-      // Step 3: Re-send with X-Payment header (single request, no retry dance)
+      // Step 3: Re-send with X-Payment header
       setStep("verifying");
       const paid = await fetch(url, mergeHeaders(init, { "X-Payment": xPayment }));
       const result = await parseResponseOrThrow<T>(paid);

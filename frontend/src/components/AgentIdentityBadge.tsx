@@ -25,7 +25,7 @@ export function AgentIdentityBadge({
             </span>
           </div>
           <p className="text-slate-400 text-[11px]">
-            Onchain Identity & Trust Protocol on BotChain EVM
+            Onchain Identity & Trust Protocol on Arc Network
           </p>
         </div>
       </div>

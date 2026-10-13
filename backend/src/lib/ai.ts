@@ -143,12 +143,20 @@ export function getActiveModel(): string {
   return model;
 }
 
-/** Resolved Gemini model id from environment. */
+/** Resolved Gemini model id from environment with verified fallback. */
 export function getActiveGeminiModel(): string {
-  const model = process.env.GEMINI_MODEL;
-  if (!model) throw new Error("FATAL: GEMINI_MODEL environment variable is missing");
+  const model = process.env.GEMINI_MODEL?.trim();
+  if (!model || model === "gemini-3.6-flash") {
+    return "gemini-flash-lite-latest";
+  }
   return model;
 }
+
+export const GEMINI_FALLBACK_MODELS = [
+  "gemini-flash-lite-latest",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-latest",
+];
 
 function resolveBaseURL(apiKey: string): string | undefined {
   if (process.env.ANTHROPIC_BASE_URL) return process.env.ANTHROPIC_BASE_URL;
@@ -500,16 +508,21 @@ async function runGeminiJsonCompletion(
 /* Public API Functions                                                       */
 /* -------------------------------------------------------------------------- */
 
+export function buildSystemPrompt(networkName?: string): string {
+  const chainPart = networkName ? ` operating on ${networkName}` : " operating on Arc";
+  return `You are AgentPay AI, an advanced Web3 assistant${chainPart}. Your primary mission is to give users seamless access to premier artificial intelligence at ultra-low cost by charging strictly per use with USDC micropayments instead of bulky, expensive subscription cycles. You support pay-per-prompt text assistance, image generation, and smart contract security audits via gasless EIP-3009 signatures. Provide complete, clear, helpful, and direct answers without unnecessary filler. Always complete your sentences fully.`;
+}
+
 export async function generateChatResponse(
   prompt: string,
   provider: AIProvider = "gemini",
-  maxTokens?: number
+  maxTokens?: number,
+  networkName?: string
 ): Promise<AIResult> {
   const budget = maxTokens ?? 256;
   const params = {
     maxTokens: budget,
-    system: `You are AgentPay AI, a fast, helpful AI assistant built on BotChain.
-Provide complete, clear, and direct answers without unnecessary filler. Always complete your sentences fully.`,
+    system: buildSystemPrompt(networkName),
     userContent: prompt,
   };
 

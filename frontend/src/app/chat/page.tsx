@@ -25,7 +25,6 @@ interface MessageItem {
 }
 
 export default function ChatPage() {
-  // Wake the Render free-tier backend on page load (prevents cold-start payment timeouts)
   useBackendWarmup();
   const allowNetworkSwitch = useCanSwitchNetwork();
   const { disconnectWallet, switchOrAddChain } = useWallet();
@@ -35,7 +34,6 @@ export default function ChatPage() {
     authenticated,
     connectWallet,
     isTestnet,
-    isArc,
     currentChainId,
     runPaid,
     loading: paidLoading,
@@ -44,11 +42,7 @@ export default function ChatPage() {
     formattedAmount,
   } = usePaidService("chat");
   const {
-    botBalance,
-    apayBalance,
     usdcBalance,
-    usdtBalance,
-    bousdtBalance,
     paymentBalance,
     paymentSymbol,
     loading: balanceLoading,
@@ -67,7 +61,7 @@ export default function ChatPage() {
         {
           id: `error-${Date.now()}`,
           sender: "ai",
-          text: `Insufficient ${paymentSymbol} balance: your wallet currently has ${paymentBalance} ${paymentSymbol}. Top up on ${isArc ? "Arc" : "BotChain"} to pay for AI prompts.`,
+          text: `Insufficient USDC balance: your connected wallet has ${paymentBalance} USDC. Top up with USDC on Arc to pay for AI prompts.`,
           isError: true,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
@@ -94,7 +88,7 @@ export default function ChatPage() {
         throw new Error("No response received from AI");
       }
 
-      const paidFormatted = data?._paidAmountFormatted || formattedAmount;
+      const paidFormatted = data?._paidAmountFormatted || formattedAmount || "0.0058 USDC";
 
       setMessages((prev) => [
         ...prev,
@@ -131,11 +125,7 @@ export default function ChatPage() {
     <main className="flex flex-col min-h-screen max-w-md mx-auto bg-slate-950 text-slate-100 shadow-2xl border-x border-slate-800">
       <BalanceBar
         address={address}
-        botBalance={botBalance}
-        apayBalance={apayBalance}
         usdcBalance={usdcBalance}
-        usdtBalance={usdtBalance}
-        bousdtBalance={bousdtBalance}
         loading={balanceLoading}
         onRefresh={refetch}
         onDisconnect={disconnectWallet}
@@ -178,7 +168,7 @@ export default function ChatPage() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            ✨ Gemini 3.6 Flash
+            ✨ Google Gemini Flash
           </button>
           <button
             onClick={() => setProvider("claude")}
@@ -197,16 +187,13 @@ export default function ChatPage() {
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
           <div className="flex items-center space-x-1.5 text-amber-400 font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>
-              x402 Micropayments via {isArc ? "Circle Facilitator" : "BOF Facilitator"}
-            </span>
+            <span>x402 Gasless Micropayments on Arc</span>
           </div>
           <p className="text-slate-400">
-            Pay-per-prompt: each message uses EIP-3009 {isArc ? "USDC" : "$APAY"} authorization. Sign
-            in your wallet once (zero gas). The facilitator verifies off-chain and settles on-chain.
-            Active model:{" "}
+            Pay-per-prompt: each message uses EIP-3009 USDC authorization. Sign
+            in your wallet once (zero gas). Active model:{" "}
             <strong className="text-amber-400">
-              {provider === "gemini" ? "Google Gemini 3.6 Flash (Default)" : "Anthropic Claude 3.5"}
+              {provider === "gemini" ? "Google Gemini Flash (Default)" : "Anthropic Claude 3.5"}
             </strong>
           </p>
         </div>
@@ -214,7 +201,7 @@ export default function ChatPage() {
         {!authenticated || !address ? (
           <div className="bg-purple-950/40 border border-purple-800/60 rounded-xl p-4 space-y-3 text-xs">
             <p className="text-purple-100 font-medium">
-              Connect a wallet to pay with {isArc ? "USDC" : "$APAY"}
+              Connect a wallet to pay with USDC on Arc
             </p>
             <button
               onClick={() => connectWallet()}
@@ -229,16 +216,14 @@ export default function ChatPage() {
         {paymentStep === "signing" && (
           <div className="bg-amber-950/40 border border-amber-800/80 text-amber-300 rounded-xl p-3 text-xs flex items-center space-x-2 animate-pulse">
             <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-            <span>🔑 Sign {formattedAmount || paymentSymbol} payment authorization in your wallet (0 gas)...</span>
+            <span>🔑 Sign {formattedAmount || "USDC"} payment authorization in your wallet (0 gas)...</span>
           </div>
         )}
 
         {paymentStep === "verifying" && (
           <div className="bg-emerald-950/40 border border-emerald-800/80 text-emerald-300 rounded-xl p-3 text-xs flex items-center space-x-2 animate-pulse">
             <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-            <span>
-              🔍 Authorization signed! Verifying payment with {isArc ? "Circle" : "BOF"} Facilitator...
-            </span>
+            <span>🔍 Authorization signed! Verifying payment on Arc...</span>
           </div>
         )}
 
@@ -246,8 +231,8 @@ export default function ChatPage() {
           <div className="bg-amber-950/60 border border-amber-800 text-amber-300 rounded-xl p-3 text-xs flex items-center space-x-2">
             <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
             <span>
-              <strong>Insufficient {paymentSymbol} balance:</strong> Your wallet has {paymentBalance}{" "}
-              {paymentSymbol}. Top up on {isArc ? "Arc" : "BotChain"} to pay for AI prompts.
+              <strong>Insufficient USDC balance:</strong> Your wallet has {paymentBalance} USDC.
+              Top up with USDC on Arc to pay for AI prompts.
             </span>
           </div>
         )}
@@ -290,10 +275,10 @@ export default function ChatPage() {
                   <ChatMarkdown text={msg.text} />
                   <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
                     <span className="flex items-center space-x-1 text-emerald-400 font-medium">
-                      <span>⚡ Paid {msg.paidAmountFormatted || "$APAY"}</span>
+                      <span>⚡ Paid {msg.paidAmountFormatted || "0.0058 USDC"}</span>
                       <span className="text-slate-500">•</span>
                       <span>
-                        {msg.provider === "claude" ? "Claude Verified" : "Gemini 3.6 Verified"}
+                        {msg.provider === "claude" ? "Claude Verified" : "Gemini Verified"}
                       </span>
                     </span>
                   </div>
@@ -310,7 +295,7 @@ export default function ChatPage() {
             <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
             <span>
               Generating answer with{" "}
-              {provider === "gemini" ? "Google Gemini 3.6 Flash..." : "Anthropic Claude 3.5..."}
+              {provider === "gemini" ? "Google Gemini Flash..." : "Anthropic Claude 3.5..."}
             </span>
           </div>
         )}
@@ -328,14 +313,14 @@ export default function ChatPage() {
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={`Ask ${provider === "gemini" ? "Gemini 3.6 Flash" : "Claude 3.5"} anything...`}
+            placeholder={`Ask ${provider === "gemini" ? "Google Gemini Flash" : "Claude 3.5"} anything...`}
             disabled={busy}
             className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={busy || !prompt.trim()}
-            className="p-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl transition flex-shrink-0"
+            className="p-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl transition flex-shrink-0 cursor-pointer"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>

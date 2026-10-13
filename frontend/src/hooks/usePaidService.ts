@@ -8,7 +8,7 @@ import { getApiUrl } from "@/lib/environment";
 
 /**
  * Pay-per-prompt orchestration (no prepaid deposits / no budget modal).
- * Each tool call: 402 challenge → EIP-3009 (USDC on Arc, APAY on BotChain) → retry.
+ * Each tool call: 402 challenge → EIP-3009 USDC on Arc → retry.
  */
 export function usePaidService(service: ServiceKey) {
   const pricing = SERVICE_PRICES[service];
@@ -73,12 +73,18 @@ export function usePaidService(service: ServiceKey) {
           url,
           {
             method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Chain-Id": String(currentChainId),
+              "X-Network": `eip155:${currentChainId}`,
+            },
             body: JSON.stringify(body),
           },
           {
             preferTestnet: isTestnet,
             provider: provider ?? null,
             account: address,
+            chainId: currentChainId,
             switchChain,
           }
         )) as T;

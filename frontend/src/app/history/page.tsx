@@ -11,11 +11,7 @@ export default function HistoryPage() {
   const allowNetworkSwitch = useCanSwitchNetwork();
   const { address, currentChainId, isTestnet, disconnectWallet, switchOrAddChain } = useWallet();
   const {
-    botBalance,
-    apayBalance,
     usdcBalance,
-    usdtBalance,
-    bousdtBalance,
     loading: balanceLoading,
     refetch,
   } = useBalance(address, currentChainId);
@@ -24,26 +20,26 @@ export default function HistoryPage() {
     {
       id: "1",
       tool: "AI Text Assistant",
-      amount: "$0.01 USDT",
+      amount: "0.0058 USDC",
       timestamp: "2 mins ago",
       txHash: "0x3f7a1b...89c2",
-      status: "Settled (BotChain)",
+      status: "Settled (Arc)",
     },
     {
       id: "2",
       tool: "AI Image Creator",
-      amount: "$0.05 USDT",
+      amount: "0.0200 USDC",
       timestamp: "15 mins ago",
       txHash: "0x9e2c4d...11a4",
-      status: "Settled (BotChain)",
+      status: "Settled (Arc)",
     },
     {
       id: "3",
       tool: "AI Code Reviewer",
-      amount: "$0.02 USDT",
+      amount: "0.0150 USDC",
       timestamp: "1 hour ago",
       txHash: "0x6a8f0b...55d9",
-      status: "Settled (BotChain)",
+      status: "Settled (Arc)",
     },
   ];
 
@@ -51,11 +47,7 @@ export default function HistoryPage() {
     <main className="flex flex-col min-h-screen max-w-md mx-auto bg-slate-950 text-slate-100 shadow-2xl border-x border-slate-800">
       <BalanceBar
         address={address}
-        botBalance={botBalance}
-        apayBalance={apayBalance}
         usdcBalance={usdcBalance}
-        usdtBalance={usdtBalance}
-        bousdtBalance={bousdtBalance}
         loading={balanceLoading}
         onRefresh={refetch}
         onDisconnect={disconnectWallet}
@@ -76,7 +68,7 @@ export default function HistoryPage() {
           </div>
         </div>
         <span className="text-xs font-semibold text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-800/50">
-          BotChain Agent Network
+          Arc Network
         </span>
       </div>
 
@@ -84,10 +76,10 @@ export default function HistoryPage() {
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 space-y-1 text-xs">
           <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Onchain ERC-8021 Attribution Tracked</span>
+            <span>Onchain Micropayments Tracked</span>
           </div>
           <p className="text-slate-400">
-            All micropayments are settled via x402 on BotChain EVM and recorded onchain via AgentPayRegistry.
+            All micropayments are settled via x402 on Arc with USDC EIP-3009 gasless signatures.
           </p>
         </div>
 
@@ -104,7 +96,7 @@ export default function HistoryPage() {
               <div className="space-y-1">
                 <div className="flex items-center space-x-2">
                   <h3 className="font-semibold text-white text-xs">{item.tool}</h3>
-                  <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded flex items-center space-x-1">
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center space-x-1">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>{item.status}</span>
                   </span>
@@ -113,7 +105,7 @@ export default function HistoryPage() {
                   <span>{item.timestamp}</span>
                   <span>•</span>
                   <a
-                    href="https://scan.bohr.life"
+                    href="https://explorer.arc.io"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center space-x-1 text-amber-400 hover:text-amber-300 font-mono"

@@ -2,19 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bot, Image as ImageIcon, Code, Coins, History } from "lucide-react";
-import { useWallet } from "@/hooks/useWallet";
+import { Home, Bot, Image as ImageIcon, Code, History } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { isArc } = useWallet();
 
   const navItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/chat", label: "Chat", icon: Bot },
     { href: "/image", label: "Image", icon: ImageIcon },
     { href: "/code", label: "Code", icon: Code },
-    ...(!isArc ? [{ href: "/dex", label: "DEX", icon: Coins }] : []),
     { href: "/history", label: "History", icon: History },
   ];
 

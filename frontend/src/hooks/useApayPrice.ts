@@ -27,17 +27,17 @@ export interface ApayPriceResponse {
 
 const DEFAULT_FALLBACK_PRICE: ApayPriceResponse = {
   status: "ok",
-  token: "APAY",
-  priceUsd: 0.0078,
+  token: "USDC",
+  priceUsd: 1.0,
   updatedAt: Date.now(),
   ttlSec: 3600,
   source: "default_fallback",
-  baseComputeUnitUsd: 0.0078,
+  baseComputeUnitUsd: 0.0058,
   servicePrices: {
-    chat: { targetUsdCost: 0.0078, multiplier: 1.0, amountTokens: 1.0, amountAtomic: "1000000000000000000" },
-    relay: { targetUsdCost: 0.0078, multiplier: 1.0, amountTokens: 1.0, amountAtomic: "1000000000000000000" },
-    code: { targetUsdCost: 0.0156, multiplier: 2.0, amountTokens: 2.0, amountAtomic: "2000000000000000000" },
-    image: { targetUsdCost: 0.0390, multiplier: 5.0, amountTokens: 5.0, amountAtomic: "5000000000000000000" },
+    chat: { targetUsdCost: 0.0058, multiplier: 1.0, amountTokens: 0.0058, amountAtomic: "5800" },
+    relay: { targetUsdCost: 0.0058, multiplier: 1.0, amountTokens: 0.0058, amountAtomic: "5800" },
+    code: { targetUsdCost: 0.0150, multiplier: 2.0, amountTokens: 0.0150, amountAtomic: "15000" },
+    image: { targetUsdCost: 0.0200, multiplier: 5.0, amountTokens: 0.0200, amountAtomic: "20000" },
   },
 };
 

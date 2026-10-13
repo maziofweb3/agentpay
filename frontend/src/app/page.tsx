@@ -10,7 +10,7 @@ import { BalanceBar } from "@/components/BalanceBar";
 import { formatServiceCharge } from "@/lib/pricing";
 import { AgentIdentityBadge } from "@/components/AgentIdentityBadge";
 import { FeedbackModal } from "@/components/FeedbackModal";
-import { Bot, Image as ImageIcon, Code, Sparkles, Smartphone, CheckCircle, Star, Cpu, Coins } from "lucide-react";
+import { Bot, Image as ImageIcon, Code, Sparkles, Smartphone, CheckCircle, Star, Cpu } from "lucide-react";
 
 export default function Home() {
   const allowNetworkSwitch = useCanSwitchNetwork();
@@ -20,17 +20,12 @@ export default function Home() {
     connecting,
     currentChainId,
     currentChainName,
-    isArc,
     connectWallet,
     disconnectWallet,
     switchOrAddChain,
   } = useWallet();
   const {
-    botBalance,
-    apayBalance,
     usdcBalance,
-    usdtBalance,
-    bousdtBalance,
     loading: balanceLoading,
     refetch,
   } = useBalance(address, currentChainId);
@@ -49,11 +44,7 @@ export default function Home() {
     <main className="flex flex-col min-h-screen max-w-md mx-auto bg-slate-950 text-slate-100 shadow-2xl border-x border-slate-800">
       <BalanceBar
         address={address}
-        botBalance={botBalance}
-        apayBalance={apayBalance}
         usdcBalance={usdcBalance}
-        usdtBalance={usdtBalance}
-        bousdtBalance={bousdtBalance}
         loading={balanceLoading}
         onRefresh={refetch}
         onDisconnect={disconnectWallet}
@@ -68,7 +59,7 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <span className="inline-flex items-center space-x-1.5 bg-amber-400/10 text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-400/20">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Gemini 3.6 & Claude Opus 5</span>
+              <span>Google Gemini & Claude 3.5</span>
             </span>
             <span className="inline-flex items-center space-x-1 bg-purple-400/10 text-purple-400 text-xs font-medium px-2 py-0.5 rounded-full border border-purple-400/20">
               <Cpu className="w-3 h-3" />
@@ -86,14 +77,14 @@ export default function Home() {
             AgentPay AI
           </h1>
           <p className="text-slate-400 text-sm leading-relaxed">
-            Pay-per-prompt AI on Arc with USDC (Circle Facilitator) — text, images, and contract audits. Switch to BotChain anytime to pay with $APAY via BOF. EIP-3009 signatures, no subscriptions.
+            Premier Web3 intelligence at ultra-low cost, charging strictly per use with USDC micropayments on Arc instead of bulky, expensive subscription cycles. Gasless EIP-3009 signatures, no commitments.
           </p>
 
           {!address ? (
             <button
               onClick={connectWallet}
               disabled={connecting}
-              className="w-full mt-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 rounded-xl transition flex items-center justify-center space-x-2 text-sm shadow-lg shadow-purple-600/20"
+              className="w-full mt-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 rounded-xl transition flex items-center justify-center space-x-2 text-sm shadow-lg shadow-purple-600/20 cursor-pointer"
             >
               <Smartphone className="w-4 h-4" />
               <span>{connecting ? "Connecting Wallet..." : "Connect Wallet to Start"}</span>
@@ -106,7 +97,7 @@ export default function Home() {
               </span>
               <button
                 onClick={disconnectWallet}
-                className="text-xs text-slate-400 hover:text-red-400 transition"
+                className="text-xs text-slate-400 hover:text-red-400 transition cursor-pointer"
               >
                 Disconnect
               </button>
@@ -125,7 +116,7 @@ export default function Home() {
             </h2>
             <button
               onClick={() => setFeedbackOpen(true)}
-              className="text-xs text-amber-400 hover:text-amber-300 flex items-center space-x-1 font-medium transition"
+              className="text-xs text-amber-400 hover:text-amber-300 flex items-center space-x-1 font-medium transition cursor-pointer"
             >
               <Star className="w-3 h-3 fill-amber-400" />
               <span>Give Feedback</span>
@@ -144,7 +135,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">AI Text Assistant</h3>
-                  <p className="text-xs text-slate-400">Gemini 3.6 Flash & Claude Opus 5</p>
+                  <p className="text-xs text-slate-400">Google Gemini Flash & Claude 3.5</p>
                 </div>
               </div>
               <div className="text-right">
@@ -204,35 +195,6 @@ export default function Home() {
                 </span>
               </div>
             </Link>
-
-            {/* DEX & Liquidity Hub — BotChain only until an Arc AMM exists */}
-            {!isArc && (
-            <Link
-              href="/dex"
-              className="bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-slate-900 border border-amber-500/30 hover:border-amber-400/50 p-4 rounded-xl transition cursor-pointer flex items-center justify-between group shadow-md"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="p-3 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 group-hover:scale-105 transition">
-                  <Coins className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white text-sm flex items-center space-x-1.5">
-                    <span>DEX &amp; Liquidity Hub</span>
-                    <span className="text-[9px] bg-amber-400/20 text-amber-400 font-bold px-1.5 py-0.5 rounded">NEW</span>
-                  </h3>
-                  <p className="text-xs text-slate-400">Swap APAY &amp; 1-Click Zap Liquidity</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-lg border border-amber-500/30 block">
-                  0.30% Fee
-                </span>
-                <span className="text-[10px] text-emerald-400 mt-0.5 block font-medium">
-                  Auto-Mint Active
-                </span>
-              </div>
-            </Link>
-            )}
           </div>
         </div>
       </div>
@@ -244,7 +206,7 @@ export default function Home() {
       />
 
       <footer className="p-4 text-center text-xs text-slate-500 border-t border-slate-900">
-        AgentPay AI • Arc USDC + Circle Facilitator · BotChain $APAY + BOF · x402 & ERC-8004
+        AgentPay AI • Arc USDC Pay-Per-Use • x402 & EIP-3009 Gasless Payments
       </footer>
     </main>
   );

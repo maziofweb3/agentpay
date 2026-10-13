@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "AgentPay AI — Pay-Per-Prompt AI on Arc",
-  description: "AI agent infrastructure powered by Arc USDC x402 micropayments, with BotChain $APAY as a switchable rail.",
+  description: "Premier AI intelligence at ultra-low cost, charging strictly per use with USDC micropayments on Arc instead of bulky subscriptions.",
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },

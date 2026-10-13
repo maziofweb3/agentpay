@@ -51,18 +51,7 @@ export const arc = defineChain({
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
   rpcUrls: {
     default: {
-      http: [
-        process.env.NEXT_PUBLIC_ARC_MAINNET_RPC ||
-        process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL ||
-        "https://rpc.mainnet.arc.io",
-      ],
-    },
-    privyWalletOverride: {
-      http: [
-        process.env.NEXT_PUBLIC_ARC_MAINNET_RPC ||
-        process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL ||
-        "https://rpc.mainnet.arc.io",
-      ],
+      http: ["https://rpc.mainnet.arc.io"],
     },
   },
   blockExplorers: {
@@ -77,18 +66,7 @@ export const arcTestnet = defineChain({
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
   rpcUrls: {
     default: {
-      http: [
-        process.env.NEXT_PUBLIC_ARC_TESTNET_RPC ||
-        process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ||
-        "https://rpc.testnet.arc.io",
-      ],
-    },
-    privyWalletOverride: {
-      http: [
-        process.env.NEXT_PUBLIC_ARC_TESTNET_RPC ||
-        process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ||
-        "https://rpc.testnet.arc.io",
-      ],
+      http: ["https://rpc.testnet.arc.io"],
     },
   },
   blockExplorers: {
@@ -97,39 +75,10 @@ export const arcTestnet = defineChain({
   testnet: true,
 });
 
-export const botChain = defineChain({
-  id: 677,
-  name: "BOT Chain",
-  nativeCurrency: { name: "BOT", symbol: "BOT", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["https://rpc.botchain.ai"] },
-  },
-  blockExplorers: {
-    default: { name: "BOTScan", url: "https://scan.botchain.ai" },
-  },
-});
-
-export const botChainTestnet = defineChain({
-  id: 968,
-  name: "BOT Chain Testnet",
-  nativeCurrency: { name: "tBOT", symbol: "tBOT", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["https://rpc.bohr.life"] },
-  },
-  blockExplorers: {
-    default: { name: "BOTScan Testnet", url: "https://scan.bohr.life" },
-  },
-  testnet: true,
-});
-
-export const ALL_CHAINS: Chain[] = [arc, arcTestnet, botChain, botChainTestnet];
+export const ALL_CHAINS: Chain[] = [arc, arcTestnet];
 
 export function isArcChainId(chainId: number): boolean {
   return chainId === 5042 || chainId === 5042002;
-}
-
-export function isBotChainId(chainId: number): boolean {
-  return chainId === 677 || chainId === 968;
 }
 
 export function chainById(chainId: number): Chain {
@@ -155,7 +104,7 @@ export function addChainParams(chainId: number) {
     chainId: `0x${chainId.toString(16)}`,
     chainName: chain.name,
     nativeCurrency: chain.nativeCurrency,
-    rpcUrls: [...chain.rpcUrls.default.http],
+    rpcUrls: [chain.rpcUrls.default.http[0]],
     blockExplorerUrls: chain.blockExplorers?.default?.url
       ? [chain.blockExplorers.default.url]
       : [],
@@ -182,20 +131,7 @@ export const publicClientArcTestnet = createPublicClient({
   ),
 });
 
-export const publicClientBotChain = createPublicClient({
-  chain: botChain,
-  transport: http("https://rpc.botchain.ai", { timeout: 15_000, retryCount: 2 }),
-});
-
-export const publicClientBotChainTestnet = createPublicClient({
-  chain: botChainTestnet,
-  transport: http("https://rpc.bohr.life", { timeout: 15_000, retryCount: 2 }),
-});
-
 export function getPublicClient(chainId: number) {
-  if (chainId === 5042) return publicClientArc;
   if (chainId === 5042002) return publicClientArcTestnet;
-  if (chainId === 677) return publicClientBotChain;
-  if (chainId === 968) return publicClientBotChainTestnet;
   return publicClientArc;
 }

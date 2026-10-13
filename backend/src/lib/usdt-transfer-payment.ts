@@ -1,10 +1,5 @@
 /**
- * BotChain-native USDT payment verification.
- *
- * BotChain USDT does not implement EIP-3009 (transferWithAuthorization), so the
- * standard x402 ExactEvmScheme cannot settle on-chain. Instead the client sends
- * a real ERC-20 `transfer` to the vault and retries the API call with
- * `X-AgentPay-Payment-Tx: <txHash>`. This module validates that transfer.
+ * Legacy on-chain ERC-20 transfer payment verification.
  */
 
 import {

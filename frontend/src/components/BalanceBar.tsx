@@ -2,17 +2,16 @@
 
 import { useState } from "react";
 import { Wallet, Coins, RefreshCw, Cpu, LogOut, ChevronDown, Copy, Check } from "lucide-react";
-import { ALL_CHAINS, chainById, isArcChainId } from "@/lib/chains";
+import { ALL_CHAINS, chainById } from "@/lib/chains";
 import { getExpectedChainId } from "@/lib/environment";
 
 interface BalanceBarProps {
   address: string | null;
-  botBalance: string;
+  botBalance?: string;
   apayBalance?: string;
   usdcBalance?: string;
   usdtBalance?: string;
   bousdtBalance?: string;
-  /** Pre-authorized APAY spending budget remaining (formatted, e.g. "10.0 $APAY"). */
   spendingBudget?: string | null;
   loading: boolean;
   onRefresh: () => void;
@@ -25,12 +24,7 @@ interface BalanceBarProps {
 
 export function BalanceBar({
   address,
-  botBalance,
-  apayBalance = "0.00",
   usdcBalance = "0.00",
-  usdtBalance = "0.00",
-  bousdtBalance = "0.00",
-  spendingBudget = null,
   loading,
   onRefresh,
   onDisconnect,
@@ -45,8 +39,7 @@ export function BalanceBar({
     : null;
 
   const chain = chainById(currentChainId);
-  const onArc = isArcChainId(currentChainId);
-  const isTestnetChain = currentChainId === 968 || currentChainId === 5042002;
+  const isTestnetChain = currentChainId === 5042002;
 
   async function handleCopyAddress() {
     if (!address) return;
@@ -133,7 +126,7 @@ export function BalanceBar({
               </div>
               {ALL_CHAINS.map((option) => {
                 const active = option.id === currentChainId;
-                const testnet = option.id === 968 || option.id === 5042002;
+                const testnet = option.id === 5042002;
                 return (
                   <button
                     key={option.id}
@@ -166,77 +159,22 @@ export function BalanceBar({
 
       <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 overflow-x-auto no-scrollbar">
         <div className="flex items-center space-x-1.5 shrink-0">
-          {onArc ? (
-            <>
-              <div
-                className="flex items-center space-x-1 bg-emerald-950/70 px-2 py-0.5 rounded-full border border-emerald-700/60"
-                title="USDC ERC-20 (6 decimals) — Arc x402 payment asset"
-              >
-                <Coins className="w-3 h-3 text-emerald-400" />
-                <span className="font-semibold text-emerald-300 text-[11px]">
-                  {usdcBalance} USDC
-                </span>
-              </div>
-              <div
-                className="flex items-center space-x-1 bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-700/50 text-[10px] text-amber-300 font-mono"
-                title="x402 micropayments settle USDC via Circle Facilitator Service"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <span>Pay: USDC (EIP-3009)</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div
-                className="flex items-center space-x-1 bg-purple-950/70 px-2 py-0.5 rounded-full border border-purple-700/60"
-                title="Wallet $APAY balance — native utility token for AI tools"
-              >
-                <Coins className="w-3 h-3 text-purple-400" />
-                <span className="font-semibold text-purple-300 text-[11px]">
-                  {apayBalance} $APAY
-                </span>
-              </div>
-
-              {spendingBudget && (
-                <div
-                  className="flex items-center space-x-1 bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-700/50"
-                  title="Pre-authorized APAY spending budget for AgentPay tools"
-                >
-                  <span className="font-semibold text-amber-300 text-[11px]">
-                    Budget {spendingBudget}
-                  </span>
-                </div>
-              )}
-
-              <div
-                className="flex items-center space-x-1 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-700/50"
-                title="Native BOT for network fees only — never charged as payment"
-              >
-                <span className="font-semibold text-slate-400 text-[11px]">
-                  {botBalance} BOT fee
-                </span>
-              </div>
-
-              {Number(usdtBalance) > 0 && (
-                <div className="flex items-center space-x-1 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-700/50 text-[11px] text-slate-400">
-                  {usdtBalance} USDT
-                </div>
-              )}
-              {Number(bousdtBalance) > 0 && (
-                <div className="flex items-center space-x-1 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-700/50 text-[11px] text-slate-400">
-                  {bousdtBalance} BOUSDT
-                </div>
-              )}
-
-              <div
-                className="flex items-center space-x-1 bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-700/50 text-[10px] text-amber-300 font-mono"
-                title="x402 Micropayments settle $APAY into the AgentPayRegistry Vault"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <span>Pay: $APAY (EIP-3009)</span>
-              </div>
-            </>
-          )}
+          <div
+            className="flex items-center space-x-1 bg-emerald-950/70 px-2 py-0.5 rounded-full border border-emerald-700/60"
+            title="Connected Wallet USDC Balance on Arc"
+          >
+            <Coins className="w-3 h-3 text-emerald-400" />
+            <span className="font-semibold text-emerald-300 text-[11px]">
+              {usdcBalance} USDC
+            </span>
+          </div>
+          <div
+            className="flex items-center space-x-1 bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-700/50 text-[10px] text-amber-300 font-mono"
+            title="x402 micropayments settle USDC via Circle / EIP-3009"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span>Pay: USDC (EIP-3009)</span>
+          </div>
         </div>
 
         <button

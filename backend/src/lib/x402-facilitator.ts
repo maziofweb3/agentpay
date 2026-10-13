@@ -23,7 +23,7 @@ function getCircleUrl(): string {
   ).replace(/\/+$/, "");
 }
 
-function caip(network: unknown, fallback = "eip155:5042002"): string {
+function caip(network: unknown, fallback = "eip155:5042"): string {
   if (typeof network === "string" && network.includes(":")) return network;
   if (typeof network === "string" && /^\d+$/.test(network)) return `eip155:${network}`;
   return fallback;
@@ -32,7 +32,7 @@ function caip(network: unknown, fallback = "eip155:5042002"): string {
 function normalizeCirclePayload(paymentPayload: any, paymentRequirements: any) {
   const network = caip(
     paymentRequirements?.network ?? paymentPayload?.network,
-    "eip155:5042002"
+    "eip155:5042"
   );
   const net = getNetwork(network);
   const auth = paymentPayload?.payload?.authorization ?? paymentPayload;
@@ -268,12 +268,8 @@ export const facilitator: FacilitatorClient = {
   async getSupported() {
     return {
       kinds: [
-        { x402Version: 2, scheme: "exact", network: "eip155:5042002" },
         { x402Version: 2, scheme: "exact", network: "eip155:5042" },
-        { x402Version: 1, scheme: "exact", network: "eip155:968" },
-        { x402Version: 2, scheme: "exact", network: "eip155:968" },
-        { x402Version: 1, scheme: "exact", network: "eip155:677" },
-        { x402Version: 2, scheme: "exact", network: "eip155:677" },
+        { x402Version: 2, scheme: "exact", network: "eip155:5042002" },
       ],
       extensions: [],
       signers: {},
