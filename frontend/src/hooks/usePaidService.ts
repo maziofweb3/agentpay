@@ -61,13 +61,9 @@ export function usePaidService(service: ServiceKey) {
         console.info("[agentpay] settle (pay-per-prompt)", service, url);
 
         const provider = await getProvider();
-        const switchChain = primaryWallet
-          ? async (chainId: number) => {
-              await primaryWallet.switchChain(chainId);
-            }
-          : async (chainId: number) => {
-              await switchOrAddChain(chainId);
-            };
+        const switchChain = async (chainId: number) => {
+          await switchOrAddChain(chainId);
+        };
 
         return (await executePaidRequest(
           url,

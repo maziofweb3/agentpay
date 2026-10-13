@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { arc, arcTestnet } from "@/lib/chains";
 import { getExpectedChainId } from "@/lib/environment";
+import { WalletContextProvider } from "@/context/WalletContext";
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -37,7 +38,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        {children}
+        <WalletContextProvider>
+          {children}
+        </WalletContextProvider>
       </QueryClientProvider>
     </PrivyProvider>
   );

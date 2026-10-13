@@ -98,7 +98,7 @@ export function BalanceBar({
               />
               <Cpu className="w-3 h-3 text-purple-300" />
               <span>
-                {chain.name} ({currentChainId})
+                {isTestnetChain ? "Arc Testnet" : "Arc"}
               </span>
               <ChevronDown className="w-3 h-3 text-purple-400" />
             </button>
@@ -114,9 +114,16 @@ export function BalanceBar({
               />
               <Cpu className="w-3 h-3 text-purple-300" />
               <span>
-                {chain.name} ({currentChainId})
+                {isTestnetChain ? "Arc Testnet" : "Arc"}
               </span>
             </div>
+          )}
+
+          {menuOpen && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setMenuOpen(false)}
+            />
           )}
 
           {menuOpen && allowNetworkSwitch && onSwitchNetwork && (
