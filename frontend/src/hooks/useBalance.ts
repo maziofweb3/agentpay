@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createPublicClient, formatUnits, http, isAddress } from "viem";
-import { botChain, chainById, isArcChainId, rpcUrlFor } from "@/lib/chains";
+import { botChain, chainById, isArcChainId, getPublicClient } from "@/lib/chains";
 import { TOKENS, ERC20_ABI, getArcTokens } from "@/lib/tokens";
 import { getExpectedChainId } from "@/lib/environment";
 
@@ -37,11 +37,7 @@ export function useBalance(address: string | null | undefined, chainId?: number)
     setIsLoading(true);
 
     try {
-      const chain = chainById(resolvedChainId);
-      const client = createPublicClient({
-        chain,
-        transport: http(rpcUrlFor(resolvedChainId)),
-      });
+      const client = getPublicClient(resolvedChainId);
 
       async function safeReadContract(tokenAddr: string): Promise<bigint> {
         if (!tokenAddr || !isAddress(tokenAddr)) {
@@ -54,8 +50,9 @@ export function useBalance(address: string | null | undefined, chainId?: number)
             functionName: "balanceOf",
             args: [address as `0x${string}`],
           });
-        } catch (err) {
-          console.warn(`[useBalance] Skipping un-deployed or failing token at ${tokenAddr}:`, err);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message.split("\n")[0] : String(err);
+          console.warn(`[useBalance] Unable to read balance for ${tokenAddr}: ${msg}`);
           return BigInt(0);
         }
       }

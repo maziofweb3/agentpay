@@ -1,34 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ARC_MAINNET_RPC =
+const CANDIDATE_RPCS = [
   process.env.NEXT_PUBLIC_ARC_MAINNET_RPC ||
-  process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL ||
-  "https://rpc.mainnet.arc.io";
+    process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL ||
+    "https://rpc.mainnet.arc.io",
+  "https://5042.rpc.thirdweb.com",
+];
 
 export async function POST(req: NextRequest) {
+  let body: unknown;
   try {
-    const body = await req.json();
-    const res = await fetch(ARC_MAINNET_RPC, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (err: unknown) {
-    console.error("[RPC Proxy arc-mainnet] Error:", err);
+    body = await req.json();
+  } catch {
     return NextResponse.json(
-      {
-        jsonrpc: "2.0",
-        id: null,
-        error: { code: -32603, message: "Internal RPC proxy error" },
-      },
-      { status: 500 }
+      { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
+      { status: 400 }
     );
   }
+
+  for (const rpcUrl of CANDIDATE_RPCS) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(rpcUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        return NextResponse.json(data, { status: res.status });
+      }
+    } catch {
+      // Continue to fallback RPC
+    }
+  }
+
+  return NextResponse.json(
+    {
+      jsonrpc: "2.0",
+      id: (body as { id?: unknown })?.id ?? null,
+      error: { code: -32603, message: "All Arc Mainnet RPC endpoints failed" },
+    },
+    { status: 502 }
+  );
 }
 
 export async function OPTIONS() {

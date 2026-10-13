@@ -8,25 +8,39 @@ import { addChainParams, chainById, isArcChainId } from "@/lib/chains";
 export interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
   isMiniPay?: boolean;
+  isMetaMask?: boolean;
+  isTonWallet?: boolean;
+  on?: (event: string, cb: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, cb: (...args: unknown[]) => void) => void;
+  providers?: EthereumProvider[];
+  detected?: EthereumProvider[];
 }
 
 function getInjectedEthereum(): EthereumProvider | undefined {
   if (typeof window === "undefined") return undefined;
-  const eth = window.ethereum as any;
+  const eth = window.ethereum as EthereumProvider | undefined;
   if (!eth) return undefined;
 
   // When multiple wallet extensions are installed (e.g. MyTonWallet, Phantom, MetaMask):
   if (Array.isArray(eth.providers) && eth.providers.length > 0) {
-    const metamask = eth.providers.find((p: any) => p.isMetaMask && !p.isTonWallet);
+    const metamask = eth.providers.find((p) => p.isMetaMask && !p.isTonWallet);
     if (metamask?.request) return metamask;
-    const cleanEvm = eth.providers.find((p: any) => !p.isTonWallet && typeof p.request === "function");
+    const cleanEvm = eth.providers.find((p) => !p.isTonWallet && typeof p.request === "function");
     if (cleanEvm?.request) return cleanEvm;
   }
 
   // If window.ethereum was wrapped/intercepted by TonWallet, inspect detected providers
   if (eth.isTonWallet && Array.isArray(eth.detected)) {
-    const mm = eth.detected.find((p: any) => p.isMetaMask);
+    const mm = eth.detected.find((p) => p.isMetaMask);
     if (mm?.request) return mm;
+  }
+
+  // If the provider itself is TonWallet (and no other clean EVM provider was detected),
+  // TonWallet's EVM connector is known to intercept requests and fail with:
+  // "Open your wallet to finish updating it, then reconnect."
+  // Do not expose it as the default injected EVM provider.
+  if (eth.isTonWallet) {
+    return undefined;
   }
 
   return typeof eth.request === "function" ? eth : undefined;
@@ -176,23 +190,32 @@ export function useWallet() {
   const [injectedChainId, setInjectedChainId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.ethereum) return;
-    const eth = window.ethereum as {
+    if (typeof window === "undefined") return;
+    const injected = getInjectedEthereum() as {
       request?: (args: { method: string }) => Promise<unknown>;
       on?: (event: string, cb: (...args: unknown[]) => void) => void;
       removeListener?: (event: string, cb: (...args: unknown[]) => void) => void;
-    };
+    } | undefined;
 
-    if (eth.request) {
-      eth.request({ method: "eth_chainId" }).then((hex) => {
-        if (typeof hex === "string") {
-          const parsed = parseInt(hex, 16);
-          if (Number.isFinite(parsed) && parsed > 0) setInjectedChainId(parsed);
-        }
-      }).catch(() => {});
+    if (!injected) return;
+
+    if (injected.request) {
+      try {
+        injected
+          .request({ method: "eth_chainId" })
+          .then((hex) => {
+            if (typeof hex === "string") {
+              const parsed = parseInt(hex, 16);
+              if (Number.isFinite(parsed) && parsed > 0) setInjectedChainId(parsed);
+            }
+          })
+          .catch(() => {});
+      } catch {
+        // Ignore extension errors
+      }
     }
 
-    if (!eth.on) return;
+    if (!injected.on) return;
     const handleChainChanged = (hex: unknown) => {
       if (typeof hex === "string") {
         const parsed = parseInt(hex, 16);
@@ -200,9 +223,9 @@ export function useWallet() {
       }
     };
 
-    eth.on("chainChanged", handleChainChanged);
+    injected.on("chainChanged", handleChainChanged);
     return () => {
-      eth.removeListener?.("chainChanged", handleChainChanged);
+      injected.removeListener?.("chainChanged", handleChainChanged);
     };
   }, []);
 

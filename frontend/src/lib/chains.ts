@@ -164,20 +164,38 @@ export function addChainParams(chainId: number) {
 
 export const publicClientArc = createPublicClient({
   chain: arc,
-  transport: http(typeof window !== "undefined" ? "/rpc/arc" : (process.env.NEXT_PUBLIC_ARC_MAINNET_RPC || "https://rpc.mainnet.arc.io")),
+  transport: http(
+    typeof window !== "undefined"
+      ? "/rpc/arc"
+      : process.env.NEXT_PUBLIC_ARC_MAINNET_RPC || "https://rpc.mainnet.arc.io",
+    { timeout: 15_000, retryCount: 2 }
+  ),
 });
 
 export const publicClientArcTestnet = createPublicClient({
   chain: arcTestnet,
-  transport: http(typeof window !== "undefined" ? "/rpc/arc-testnet" : (process.env.NEXT_PUBLIC_ARC_TESTNET_RPC || "https://rpc.testnet.arc.io")),
+  transport: http(
+    typeof window !== "undefined"
+      ? "/rpc/arc-testnet"
+      : process.env.NEXT_PUBLIC_ARC_TESTNET_RPC || "https://rpc.testnet.arc.io",
+    { timeout: 15_000, retryCount: 2 }
+  ),
 });
 
 export const publicClientBotChain = createPublicClient({
   chain: botChain,
-  transport: http("https://rpc.botchain.ai"),
+  transport: http("https://rpc.botchain.ai", { timeout: 15_000, retryCount: 2 }),
 });
 
 export const publicClientBotChainTestnet = createPublicClient({
   chain: botChainTestnet,
-  transport: http("https://rpc.bohr.life"),
+  transport: http("https://rpc.bohr.life", { timeout: 15_000, retryCount: 2 }),
 });
+
+export function getPublicClient(chainId: number) {
+  if (chainId === 5042) return publicClientArc;
+  if (chainId === 5042002) return publicClientArcTestnet;
+  if (chainId === 677) return publicClientBotChain;
+  if (chainId === 968) return publicClientBotChainTestnet;
+  return publicClientArc;
+}
