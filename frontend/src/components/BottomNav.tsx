@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bot, Image as ImageIcon, Code, History } from "lucide-react";
+import { Home, Bot, Image as ImageIcon, Code, History, ArrowRightLeft } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -16,8 +16,8 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-950/95 backdrop-blur-md border-t border-slate-800 z-40">
-      <div className="flex items-center justify-around py-2">
+    <nav className="md:hidden fixed bottom-3 left-3 right-3 max-w-md mx-auto z-40">
+      <div className="glass-dock rounded-2xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-white/10 flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -25,14 +25,27 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center space-y-1 text-[11px] font-medium transition ${
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? "text-amber-400 font-bold"
+                  ? "bg-gradient-to-b from-purple-500/20 to-indigo-500/20 text-white"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-amber-400" : "text-slate-400"}`} />
-              <span>{item.label}</span>
+              <Icon
+                className={`w-5 h-5 transition-transform duration-200 ${
+                  isActive ? "text-cyan-300 scale-110" : "text-slate-400"
+                }`}
+              />
+              <span
+                className={`text-[10px] mt-0.5 tracking-tight ${
+                  isActive ? "text-white font-bold" : "text-slate-400 font-medium"
+                }`}
+              >
+                {item.label}
+              </span>
+              {isActive && (
+                <span className="w-1.5 h-1 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8] mt-0.5 animate-pulse" />
+              )}
             </Link>
           );
         })}

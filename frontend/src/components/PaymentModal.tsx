@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ShieldCheck, Loader2, DollarSign, X, Coins, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
+import { ShieldCheck, Loader2, DollarSign, X, Coins, Wallet, Zap, CheckCircle2 } from "lucide-react";
 import {
   BUDGET_PRESETS_USD,
   PAYMENT_ASSET,
   formatApay,
-  formatUsdt,
 } from "@/lib/pricing";
 
 interface PaymentModalProps {
@@ -66,37 +66,32 @@ export function PaymentModal({
 
   const canAfford = maxAuth + 1e-9 >= minAuth;
 
-  // Free-form amount is the primary control; presets fill it in.
-  const [amountInput, setAmountInput] = useState("");
-  const [touched, setTouched] = useState(false);
-
-  // Reset / seed when modal opens or balance changes.
-  useEffect(() => {
-    if (!isOpen || !needsTopUp) return;
-    setTouched(false);
-    if (!canAfford) {
-      setAmountInput(maxAuth > 0 ? maxAuth.toFixed(2) : "");
-      return;
-    }
-    // Default: first preset that fits, else min(auth, balance).
+  const defaultAmount = useMemo(() => {
+    if (!canAfford) return maxAuth > 0 ? maxAuth.toFixed(2) : "";
     const preferred =
       BUDGET_PRESETS_USD.find((p) => p >= minAuth && p <= maxAuth + 1e-9) ??
       Math.min(Math.max(minAuth, 1), maxAuth);
-    setAmountInput(roundUsd(preferred).toFixed(2));
-  }, [isOpen, needsTopUp, minAuth, maxAuth, canAfford]);
+    return roundUsd(preferred).toFixed(2);
+  }, [canAfford, maxAuth, minAuth]);
+
+  // Free-form amount is the primary control; presets fill it in.
+  const [amountInput, setAmountInput] = useState<string>("");
+  const [touched, setTouched] = useState(false);
+
+  const activeAmount = touched ? amountInput : defaultAmount;
 
   const grantAmount = useMemo(() => {
-    const parsed = Number(amountInput);
+    const parsed = Number(activeAmount);
     if (!Number.isFinite(parsed)) return 0;
     return parsed;
-  }, [amountInput]);
+  }, [activeAmount]);
 
   const validationError = useMemo(() => {
     if (!needsTopUp) return null;
     if (!canAfford) {
       return `Insufficient ${PAYMENT_ASSET} balance. Need at least ${formatApay(minAuth)}, wallet has ${formatApay(balanceUsd)}.`;
     }
-    if (!touched && amountInput === "") return null;
+    if (!touched && activeAmount === "") return null;
     if (!Number.isFinite(grantAmount) || grantAmount <= 0) {
       return "Enter an amount greater than zero.";
     }
@@ -111,7 +106,7 @@ export function PaymentModal({
     needsTopUp,
     canAfford,
     touched,
-    amountInput,
+    activeAmount,
     grantAmount,
     minAuth,
     maxAuth,
@@ -130,8 +125,6 @@ export function PaymentModal({
     (p) => p + 1e-9 >= minAuth && p - 1e-9 <= maxAuth
   );
 
-  // Never block the user when remaining authorized credit already covers this request.
-  // Only the "authorize more money" flow is allowed to render.
   if (!isOpen || !needsTopUp) return null;
 
   function setAmountFromPreset(usd: number) {
@@ -141,7 +134,6 @@ export function PaymentModal({
 
   function onAmountChange(raw: string) {
     setTouched(true);
-    // Allow empty / partial typing ("", "0.", "1.2")
     if (raw === "" || /^\d*\.?\d{0,6}$/.test(raw)) {
       setAmountInput(raw);
     }
@@ -149,7 +141,6 @@ export function PaymentModal({
 
   function onAmountBlur() {
     if (amountInput === "" || !Number.isFinite(Number(amountInput))) return;
-    // Soft-clamp to [min, max] on blur so the user sees a valid value.
     if (canAfford) {
       const clamped = roundUsd(clamp(Number(amountInput), minAuth, maxAuth));
       setAmountInput(clamped.toFixed(2));
@@ -163,100 +154,94 @@ export function PaymentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#090D16]/85 backdrop-blur-xl animate-in fade-in">
+      <div className="w-full max-w-md glass-panel rounded-3xl p-6 sm:p-7 border border-white/10 bg-[#0D111C]/95 shadow-2xl space-y-5 relative">
         <button
           onClick={onClose}
           disabled={loading}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition disabled:opacity-50"
+          className="absolute top-5 right-5 text-slate-400 hover:text-white transition p-1 rounded-lg hover:bg-white/5 disabled:opacity-50 cursor-pointer"
           aria-label="Close"
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
-            <DollarSign className="w-5 h-5" />
+        {/* Modal Header */}
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-[#131826] border border-white/10 p-1.5 flex items-center justify-center shrink-0 shadow-lg shadow-[#0AA082]/15">
+            <Image
+              src="/agentpay-mark.png"
+              alt="AgentPay Logo"
+              width={36}
+              height={36}
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
-            <h3 className="font-bold text-white text-base">Authorize more USDT</h3>
-            <p className="text-xs text-slate-400">
-              Your authorized balance is too low for this request
+            <h3 className="font-display font-bold text-white text-base sm:text-lg flex items-center gap-1.5">
+              <span>AgentPay</span> <span className="text-[#0AA082]">Permit</span>
+            </h3>
+            <p className="text-xs text-slate-400 font-mono">
+              EIP-3009 Gasless authorization for {toolName}
             </p>
           </div>
         </div>
 
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
-          <div className="flex justify-between text-xs text-slate-400">
-            <span>Service</span>
+        {/* Telemetry Summary Panel */}
+        <div className="bg-[#0A0E17] p-4 rounded-2xl border border-white/6 space-y-2.5 text-xs font-mono">
+          <div className="flex justify-between text-slate-400">
+            <span>Target Service</span>
             <span className="font-medium text-white">{toolName}</span>
           </div>
-          <div className="flex justify-between text-xs text-slate-400">
-            <span>This request</span>
-            <span className="font-medium text-emerald-400">{formatApay(priceUsd)}</span>
+          <div className="flex justify-between text-slate-400">
+            <span>Required Charge</span>
+            <span className="font-bold text-cyan-300">{formatApay(priceUsd)}</span>
           </div>
-          <div className="flex justify-between text-xs text-slate-400">
-            <span>Remaining authorized</span>
-            <span
-              className={`font-medium ${
-                needsTopUp ? "text-rose-300" : "text-emerald-300"
-              }`}
-            >
+          <div className="flex justify-between text-slate-400">
+            <span>Active Budget</span>
+            <span className={`font-medium ${needsTopUp ? "text-rose-300" : "text-emerald-300"}`}>
               {formatApay(remainingUsd)}
             </span>
           </div>
-          <div className="flex justify-between text-xs text-slate-400 pt-2 border-t border-slate-900">
-            <span className="flex items-center gap-1">
-              <Wallet className="w-3 h-3" />
+          <div className="flex justify-between text-slate-400 pt-2 border-t border-white/5">
+            <span className="flex items-center gap-1.5 text-slate-300">
+              <Wallet className="w-3.5 h-3.5 text-purple-400" />
               Wallet {PAYMENT_ASSET}
             </span>
-            <span className="font-medium text-emerald-300">{formatApay(balanceUsd)}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-semibold text-white">Payment asset</span>
-            <span className="text-sm font-bold text-emerald-400 flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5" />
-              {PAYMENT_ASSET}
-            </span>
+            <span className="font-bold text-white">{formatApay(balanceUsd)}</span>
           </div>
         </div>
 
-        <div className="space-y-3">
+        {/* Grant Controls */}
+        <div className="space-y-3.5">
           <div>
-            <p className="text-xs text-slate-300 font-medium">
-              How much additional {PAYMENT_ASSET} may AgentPay spend?
-            </p>
-            <p className="text-[11px] text-slate-500 leading-relaxed mt-1">
-              Enter any amount from{" "}
-              <span className="text-slate-400">{formatApay(minAuth)}</span> up to your full
-              balance of <span className="text-slate-400">{formatApay(maxAuth)}</span>. After
-              this, tool calls continue without another prompt until the budget runs out.
+            <label className="text-xs font-display font-bold text-white block">
+              Pre-Authorize Allowance
+            </label>
+            <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5">
+              Choose an amount within your balance. Tool executions will stream gaslessly until this budget is depleted.
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 shrink-0">$</span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 bg-[#0A0E17] border border-white/10 rounded-xl px-3 py-2">
+              <span className="text-xs text-cyan-400 font-bold">$</span>
               <input
                 type="text"
                 inputMode="decimal"
                 autoFocus
                 disabled={loading || !canAfford}
-                value={amountInput}
+                value={activeAmount}
                 onChange={(e) => onAmountChange(e.target.value)}
                 onBlur={onAmountBlur}
                 placeholder={`${minAuth.toFixed(2)} – ${maxAuth.toFixed(2)}`}
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 disabled:opacity-50"
-                aria-label={`Authorization amount in ${PAYMENT_ASSET}`}
-                aria-invalid={Boolean(validationError)}
+                className="flex-1 bg-transparent text-sm font-mono text-white focus:outline-none disabled:opacity-50"
               />
-              <span className="text-xs text-slate-400 shrink-0">{PAYMENT_ASSET}</span>
+              <span className="text-[11px] font-mono text-slate-400">{PAYMENT_ASSET}</span>
               <button
                 type="button"
                 disabled={loading || !canAfford}
                 onClick={handleMax}
-                className="text-[11px] font-bold px-2 py-2 rounded-lg border border-emerald-800/60 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 disabled:opacity-40"
-                title="Authorize full wallet balance"
+                className="text-[10px] font-mono font-bold px-2 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 transition disabled:opacity-40 cursor-pointer"
               >
                 MAX
               </button>
@@ -278,81 +263,53 @@ export function PaymentModal({
                   setTouched(true);
                   setAmountInput(roundUsd(Number(e.target.value)).toFixed(2));
                 }}
-                className="w-full accent-emerald-400"
-                aria-label="Authorization amount slider"
+                className="w-full accent-cyan-400 cursor-pointer"
               />
             )}
-
-            <div className="flex justify-between text-[10px] text-slate-500">
-              <span>Min {formatApay(minAuth)}</span>
-              <span>Max {formatApay(maxAuth)}</span>
-            </div>
           </div>
 
+          {/* Quick Presets */}
           {(availablePresets.length > 0 || canAfford) && (
-            <div className="grid grid-cols-2 gap-2">
-              {availablePresets.map((preset) => (
+            <div className="grid grid-cols-3 gap-2">
+              {availablePresets.slice(0, 3).map((preset) => (
                 <button
                   key={preset}
                   type="button"
                   disabled={loading}
                   onClick={() => setAmountFromPreset(preset)}
-                  className={`py-2 rounded-lg text-xs font-semibold border transition ${
+                  className={`py-2 rounded-xl text-xs font-mono font-medium border transition cursor-pointer ${
                     Math.abs(grantAmount - preset) < 0.001
-                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                      : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-600"
+                      ? "bg-purple-600/30 border-purple-500/60 text-purple-200 font-bold"
+                      : "bg-[#131826] border-white/6 text-slate-400 hover:text-white"
                   } disabled:opacity-40`}
                 >
                   {formatApay(preset)}
                 </button>
               ))}
-              <button
-                type="button"
-                disabled={loading || !canAfford}
-                onClick={() => setAmountFromPreset(minAuth)}
-                className={`py-2 rounded-lg text-xs font-semibold border transition ${
-                  Math.abs(grantAmount - minAuth) < 0.001
-                    ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                    : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-600"
-                } disabled:opacity-40`}
-              >
-                Just this ({formatApay(minAuth)})
-              </button>
-              <button
-                type="button"
-                disabled={loading || !canAfford}
-                onClick={handleMax}
-                className={`py-2 rounded-lg text-xs font-semibold border transition ${
-                  Math.abs(grantAmount - maxAuth) < 0.001
-                    ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                    : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-600"
-                } disabled:opacity-40`}
-              >
-                Full balance
-              </button>
             </div>
           )}
 
           {validationError && (
-            <p className="text-[11px] text-rose-300 bg-rose-950/30 border border-rose-900/50 rounded-lg px-2.5 py-2">
+            <p className="text-[11px] text-rose-300 bg-rose-950/40 border border-rose-800/60 rounded-xl px-3 py-2 leading-relaxed">
               {validationError}
             </p>
           )}
         </div>
 
-        <div className="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/50 p-3 rounded-lg border border-slate-800">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+        {/* Guarantee Info */}
+        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#131826]/70 border border-white/6 text-[11px] text-slate-400 leading-relaxed">
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <span>
-            You pick any amount within your {PAYMENT_ASSET} balance. After this
-            authorization, tool calls spend from it until it is exhausted.
+            Gasless EIP-712 signature. Funds never leave your wallet until an AI prompt successfully completes settlement.
           </span>
         </div>
 
-        <div className="flex space-x-3">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 pt-1">
           <button
             onClick={onClose}
             disabled={loading}
-            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-xl transition text-sm disabled:opacity-50"
+            className="flex-1 py-3 rounded-xl bg-[#131826] hover:bg-[#1A2234] border border-white/8 text-slate-300 font-medium text-xs transition disabled:opacity-50 cursor-pointer"
           >
             Cancel
           </button>
@@ -362,17 +319,16 @@ export function PaymentModal({
               onConfirm(roundUsd(grantAmount));
             }}
             disabled={!canConfirm}
-            className="flex-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-semibold py-2.5 rounded-xl transition text-sm flex items-center justify-center space-x-2 disabled:opacity-50"
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:brightness-110 active:scale-95 disabled:opacity-40 text-white font-bold text-xs tracking-wide shadow-xl shadow-purple-600/30 transition cursor-pointer flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Authorizing…</span>
+                <span>Signing...</span>
               </>
             ) : (
               <span>
-                Allow{" "}
-                {grantAmount > 0 ? formatApay(roundUsd(grantAmount)) : formatApay(minAuth)}
+                Authorize {grantAmount > 0 ? formatApay(roundUsd(grantAmount)) : formatApay(minAuth)}
               </span>
             )}
           </button>

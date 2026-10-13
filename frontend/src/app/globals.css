@@ -1,28 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #090d16;
+  --foreground: #dfe2ef;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-surface-lowest: #0a0e17;
+  --color-surface-low: #181b25;
+  --color-surface-card: #1c1f29;
+  --color-surface-high: #262a34;
+  --color-surface-highest: #31353f;
+  --color-surface-bright: #353943;
+  --color-primary-accent: #8b5cf6;
+  --color-primary-light: #d0bcff;
+  --color-secondary-cyan: #38bdf8;
+  --color-tertiary-emerald: #10b981;
+  --color-brand-primary: #0aa082;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-plus-jakarta), system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #090d16;
+  color: #dfe2ef;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Glassmorphism and Neon Accents */
+.glass-panel {
+  background: rgba(28, 31, 41, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-dock {
+  background: rgba(15, 19, 28, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glow-violet {
+  box-shadow: 0 4px 20px -2px rgba(139, 92, 246, 0.35);
+}
+
+.glow-cyan {
+  box-shadow: 0 4px 20px -2px rgba(56, 189, 248, 0.3);
+}
+
+.glow-emerald {
+  box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.3);
+}
+
+.glow-brand {
+  box-shadow: 0 4px 20px -2px rgba(10, 160, 130, 0.35);
+}
+
+.hairline-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Chat markdown (AI responses) */
