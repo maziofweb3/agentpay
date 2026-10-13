@@ -22,7 +22,7 @@ export interface QuotaStatus {
   message?: string;
 }
 
-export type AIProvider = "gemini" | "claude";
+export type AIProvider = "groq" | "gemini" | "claude";
 
 export type AIResult =
   | { ok: true; text: string; model: string; inputTokens: number; outputTokens: number; truncated: boolean }
@@ -40,7 +40,8 @@ function isPlaceholderKey(key: string): boolean {
   return (
     key.trim() === "" ||
     key.includes("your_anthropic_claude_api_key_here") ||
-    key.includes("your_gemini_api_key_here")
+    key.includes("your_gemini_api_key_here") ||
+    key.includes("your_groq_api_key_here")
   );
 }
 
@@ -54,6 +55,9 @@ function parseKeysFromEnv(primaryVar: string, fallbackVar?: string): string[] {
 }
 
 export function getProviderKeys(provider: AIProvider): string[] {
+  if (provider === "groq") {
+    return parseKeysFromEnv("GROQ_API_KEY", "GROQ_API_KEYS");
+  }
   if (provider === "gemini") {
     return parseKeysFromEnv("GEMINI_API_KEY", "GEMINI_API_KEYS");
   }
@@ -152,10 +156,16 @@ export function getActiveGeminiModel(): string {
   return model;
 }
 
-export const GEMINI_FALLBACK_MODELS = [
-  "gemini-flash-lite-latest",
-  "gemini-2.5-flash-lite",
-  "gemini-flash-latest",
+/** Resolved Groq model id from environment with verified flagship default. */
+export function getActiveGroqModel(): string {
+  const model = process.env.GROQ_MODEL?.trim();
+  return model || "openai/gpt-oss-120b";
+}
+
+export const GROQ_FALLBACK_MODELS = [
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-20b",
 ];
 
 function resolveBaseURL(apiKey: string): string | undefined {
@@ -359,6 +369,121 @@ async function runAnthropicCompletion(
   return lastErrorResult || { ok: false, errorType: "unknown", error: "Claude completion failed across all keys" };
 }
 
+async function runGroqCompletion(
+  label: string,
+  params: { maxTokens: number; system?: string; userContent: string; jsonMode?: boolean }
+): Promise<AIResult> {
+  const allKeys = getProviderKeys("groq");
+  if (allKeys.length === 0) {
+    const error = "GROQ_API_KEY is not set — falling back to backup provider";
+    console.warn(`[AI] ✗ ${label} unavailable on Groq: ${error}`);
+    return { ok: false, errorType: "no_key", error };
+  }
+
+  const keys = getAvailableKeysForProvider("groq");
+  const model = getActiveGroqModel();
+  let lastErrorResult: AIResult | null = null;
+
+  for (let i = 0; i < keys.length; i++) {
+    const apiKey = keys[i];
+    const keyMasked = maskKey(apiKey);
+    const start = Date.now();
+
+    try {
+      const messages: Array<{ role: string; content: string }> = [];
+      if (params.system) {
+        messages.push({ role: "system", content: params.system });
+      }
+      messages.push({ role: "user", content: params.userContent });
+
+      const requestBody: any = {
+        model,
+        messages,
+        max_tokens: params.maxTokens,
+      };
+      if (params.jsonMode) {
+        requestBody.response_format = { type: "json_object" };
+      }
+
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data: any = await res.json().catch(() => null);
+      const durationMs = Date.now() - start;
+
+      if (!res.ok) {
+        const errMsg = data?.error?.message || `HTTP ${res.status}`;
+        const errType: AIErrorType =
+          res.status === 429
+            ? "rate_limit"
+            : res.status === 401 || res.status === 403
+            ? "auth"
+            : "network";
+        throw new AIGatewayError(errMsg, errType);
+      }
+
+      const choice = data?.choices?.[0];
+      let text = (choice?.message?.content || "").trim();
+      if (!text && choice?.message?.reasoning) {
+        text = choice.message.reasoning.trim();
+      }
+
+      if (!text) {
+        throw new AIGatewayError("Groq returned empty completion text", "empty_response");
+      }
+
+      const inputTokens = data?.usage?.prompt_tokens || 0;
+      const outputTokens = data?.usage?.completion_tokens || 0;
+
+      console.log(
+        `[AI] ✓ ${label} (Groq LPU) [Key ${i + 1}/${keys.length} ${keyMasked}] completed in ${durationMs}ms with ${model} (${inputTokens} in / ${outputTokens} out tokens)`
+      );
+
+      return {
+        ok: true,
+        text,
+        model: `${model} (Groq LPU)`,
+        inputTokens,
+        outputTokens,
+        truncated: choice?.finish_reason === "length",
+      };
+    } catch (err: any) {
+      const durationMs = Date.now() - start;
+      const errorType: AIErrorType =
+        err instanceof AIGatewayError ? err.errorType : classifyError(err);
+      const error = cleanErrorMessage(err?.message || String(err));
+
+      if (errorType === "rate_limit" || errorType === "auth") {
+        markKeyExceeded(apiKey, 60, error);
+        console.warn(
+          `[AI] ⚠️ ${label} (Groq) [Key ${i + 1}/${keys.length} ${keyMasked}] failed [${errorType}]: ${error}.${
+            i + 1 < keys.length ? ` Switching to key #${i + 2}...` : " All Groq keys exhausted."
+          }`
+        );
+      } else {
+        console.error(
+          `[AI] ✗ ${label} (Groq) [Key ${i + 1}/${keys.length} ${keyMasked}] failed in ${durationMs}ms [${errorType}]: ${error}`
+        );
+      }
+      lastErrorResult = { ok: false, errorType, error };
+    }
+  }
+
+  return (
+    lastErrorResult || {
+      ok: false,
+      errorType: "unknown",
+      error: "Groq completion failed across all keys",
+    }
+  );
+}
+
 async function runGeminiCompletion(
   label: string,
   params: { maxTokens: number; system?: string; userContent: string }
@@ -515,7 +640,7 @@ export function buildSystemPrompt(networkName?: string): string {
 
 export async function generateChatResponse(
   prompt: string,
-  provider: AIProvider = "gemini",
+  provider: AIProvider = "groq",
   maxTokens?: number,
   networkName?: string
 ): Promise<AIResult> {
@@ -530,12 +655,33 @@ export async function generateChatResponse(
     return runAnthropicCompletion("chat", params);
   }
 
-  return runGeminiCompletion("chat", params);
+  // 1st Priority: Groq LPU (Ultra-Fast & Stable)
+  if (provider === "groq" || getProviderKeys("groq").length > 0) {
+    const groqResult = await runGroqCompletion("chat", params);
+    if (groqResult.ok) {
+      return groqResult;
+    }
+    console.warn(`[AI] Groq failed (${groqResult.error}). Engaging automatic failover backup: Google Gemini...`);
+  }
+
+  // 2nd Priority: Google Gemini (Automatic Failover Backup)
+  const geminiResult = await runGeminiCompletion("chat", params);
+  if (geminiResult.ok) {
+    return geminiResult;
+  }
+
+  // 3rd Priority: Claude (if available)
+  if (getProviderKeys("claude").length > 0) {
+    console.warn(`[AI] Gemini backup failed (${geminiResult.error}). Engaging tertiary backup: Claude...`);
+    return runAnthropicCompletion("chat", params);
+  }
+
+  return geminiResult;
 }
 
 export async function enhanceImagePrompt(
   prompt: string,
-  provider: AIProvider = "gemini",
+  provider: AIProvider = "groq",
   imageBase64?: string,
   maxTokens?: number
 ): Promise<AIResult> {
@@ -615,6 +761,12 @@ export async function enhanceImagePrompt(
     return runAnthropicCompletion("image prompt enhancement", params);
   }
 
+  // 1st Priority: Groq LPU
+  if (provider === "groq" || getProviderKeys("groq").length > 0) {
+    const groqResult = await runGroqCompletion("image prompt enhancement", params);
+    if (groqResult.ok) return groqResult;
+  }
+
   return runGeminiCompletion("image prompt enhancement", params);
 }
 
@@ -691,7 +843,7 @@ Respond with ONLY a JSON object, no prose or markdown fences, in exactly this sh
 
 export async function auditCodeSnippet(
   code: string,
-  provider: AIProvider = "gemini",
+  provider: AIProvider = "groq",
   maxTokens?: number
 ): Promise<CodeAuditResult> {
   const budget = maxTokens ?? 500;
@@ -701,10 +853,23 @@ export async function auditCodeSnippet(
     userContent: `${AUDIT_INSTRUCTIONS}\n\n<code>\n${code}\n</code>`,
   };
 
-  const result =
-    provider === "claude"
-      ? await runAnthropicCompletion("code audit", params)
-      : await runGeminiJsonCompletion("code audit", params);
+  let result: AIResult;
+  if (provider === "claude") {
+    result = await runAnthropicCompletion("code audit", params);
+  } else {
+    // 1st Priority: Groq LPU JSON mode
+    if (provider === "groq" || getProviderKeys("groq").length > 0) {
+      const groqResult = await runGroqCompletion("code audit", { ...params, jsonMode: true });
+      if (groqResult.ok) {
+        result = groqResult;
+      } else {
+        console.warn(`[AI] Groq code audit failed (${groqResult.error}). Failing over to Gemini...`);
+        result = await runGeminiJsonCompletion("code audit", params);
+      }
+    } else {
+      result = await runGeminiJsonCompletion("code audit", params);
+    }
+  }
 
   if (!result.ok) return result;
 

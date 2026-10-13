@@ -19,6 +19,7 @@ import {
 import {
   getActiveModel,
   getActiveGeminiModel,
+  getActiveGroqModel,
   generateChatResponse,
   enhanceImagePrompt,
   generateImageVisual,
@@ -179,8 +180,9 @@ const healthHandler = async (_req: Request, res: Response) => {
     status: isHealthy ? "ok" : "degraded",
     service: "AgentPay AI API Gateway (Express)",
     timestamp: new Date().toISOString(),
-    aiProvider: `Google ${getActiveGeminiModel()} (Default) / Anthropic ${getActiveModel()}`,
-    defaultModel: getActiveGeminiModel(),
+    aiProvider: `Groq ${getActiveGroqModel()} (Primary) / Google ${getActiveGeminiModel()} (Backup) / Anthropic ${getActiveModel()}`,
+    defaultModel: `groq (${getActiveGroqModel()})`,
+    groqModel: getActiveGroqModel(),
     geminiModel: getActiveGeminiModel(),
     claudeModel: getActiveModel(),
     network: defaultNet.caip2,
@@ -271,8 +273,15 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
   }
 
   // ★ Pre-Flight Quota Check — reject BEFORE payment challenge if model key is out of quota
-  const resolvedProvider: AIProvider = provider === "claude" ? "claude" : "gemini";
-  const quotaCheck = checkQuotaStatus(resolvedProvider);
+  const resolvedProvider: AIProvider = provider === "claude" ? "claude" : provider === "gemini" ? "gemini" : "groq";
+  let quotaCheck = checkQuotaStatus(resolvedProvider);
+  if (quotaCheck.exceeded && resolvedProvider === "groq") {
+    // If Groq is temporarily exhausted, check if fallback Gemini is available!
+    const geminiCheck = checkQuotaStatus("gemini");
+    if (!geminiCheck.exceeded) {
+      quotaCheck = { exceeded: false, retryInSec: 0 };
+    }
+  }
   if (quotaCheck.exceeded) {
     activity(
       "request.reject",
@@ -282,9 +291,9 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
     return res.status(429).json({
       success: false,
       tool: fullPath,
-      error: `AI provider (${resolvedProvider}) free-tier quota is currently exhausted. Please retry in ${quotaCheck.retryInSec}s or switch model provider.`,
+      error: `AI provider (${resolvedProvider}) rate limit or quota is currently exhausted. Please retry in ${quotaCheck.retryInSec}s or switch model provider.`,
       errorType: "rate_limit",
-      hint: `Google AI Studio free-tier rate limit reached. Retry in ${quotaCheck.retryInSec}s or select Claude 3.5.`,
+      hint: `${resolvedProvider.toUpperCase()} rate limit reached. Retry in ${quotaCheck.retryInSec}s or select another provider.`,
       retryInSeconds: quotaCheck.retryInSec,
       timestamp: new Date().toISOString(),
     });
@@ -591,7 +600,8 @@ app.post("/api/chat", async (req: Request, res: Response) => {
       .json({ success: false, tool: "chat", error: validated.error });
   }
   const prompt = validated.value;
-  const provider: AIProvider = body.provider === "claude" ? "claude" : "gemini";
+  const rawProvider = (body.provider || req.headers["x-provider"] || "groq").toString().toLowerCase();
+  const provider: AIProvider = rawProvider === "claude" ? "claude" : rawProvider === "gemini" ? "gemini" : "groq";
 
   const requestedNetHeader = (
     req.headers["x-network"] ||
@@ -698,7 +708,8 @@ app.post("/api/image", async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, tool: "image", error: "prompt or image is required" });
   }
 
-  const provider: AIProvider = body.provider === "claude" ? "claude" : "gemini";
+  const rawProvider = (body.provider || req.headers["x-provider"] || "groq").toString().toLowerCase();
+  const provider: AIProvider = rawProvider === "claude" ? "claude" : rawProvider === "gemini" ? "gemini" : "groq";
   activity("ai.image", { phase: "start", provider, hasImage: !!imageBase64, promptPreview: preview(rawPrompt) });
 
   // ── Vision mode: analyze the uploaded image ──────────────────────────────
@@ -819,7 +830,8 @@ app.post("/api/code", async (req: Request, res: Response) => {
       .json({ success: false, tool: "code", error: validated.error });
   }
   const code = validated.value;
-  const provider: AIProvider = body.provider === "claude" ? "claude" : "gemini";
+  const rawProvider = (body.provider || req.headers["x-provider"] || "groq").toString().toLowerCase();
+  const provider: AIProvider = rawProvider === "claude" ? "claude" : rawProvider === "gemini" ? "gemini" : "groq";
   activity("ai.code", { phase: "start", provider, codePreview: preview(code) });
 
   const priceInfo = await getApayPriceUsd();

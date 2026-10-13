@@ -19,7 +19,7 @@ interface MessageItem {
   sender: "user" | "ai";
   text: string;
   timestamp: string;
-  provider?: "gemini" | "claude";
+  provider?: "groq" | "gemini" | "claude";
   isError?: boolean;
   paidAmountFormatted?: string | null;
 }
@@ -49,7 +49,7 @@ export default function ChatPage() {
     refetch,
   } = useBalance(address, currentChainId);
   const [prompt, setPrompt] = useState("");
-  const [provider, setProvider] = useState<"gemini" | "claude">("gemini");
+  const [provider, setProvider] = useState<"groq" | "gemini" | "claude">("groq");
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -161,14 +161,24 @@ export default function ChatPage() {
         </div>
         <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 space-x-1">
           <button
-            onClick={() => setProvider("gemini")}
+            onClick={() => setProvider("groq")}
             className={`px-2.5 py-1 rounded-md font-semibold transition text-[11px] ${
-              provider === "gemini"
+              provider === "groq"
                 ? "bg-amber-500 text-slate-950 shadow font-bold"
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            ✨ Google Gemini Flash
+            ⚡ Groq 120B
+          </button>
+          <button
+            onClick={() => setProvider("gemini")}
+            className={`px-2.5 py-1 rounded-md font-semibold transition text-[11px] ${
+              provider === "gemini"
+                ? "bg-blue-500 text-white shadow font-bold"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            ✨ Gemini
           </button>
           <button
             onClick={() => setProvider("claude")}
@@ -193,7 +203,11 @@ export default function ChatPage() {
             Pay-per-prompt: each message uses EIP-3009 USDC authorization. Sign
             in your wallet once (zero gas). Active model:{" "}
             <strong className="text-amber-400">
-              {provider === "gemini" ? "Google Gemini Flash (Default)" : "Anthropic Claude 3.5"}
+              {provider === "groq"
+                ? "Groq GPT-OSS 120B (Default / High Speed)"
+                : provider === "gemini"
+                ? "Google Gemini Flash (Backup)"
+                : "Anthropic Claude 3.5"}
             </strong>
           </p>
         </div>
@@ -278,7 +292,11 @@ export default function ChatPage() {
                       <span>⚡ Paid {msg.paidAmountFormatted || "0.0058 USDC"}</span>
                       <span className="text-slate-500">•</span>
                       <span>
-                        {msg.provider === "claude" ? "Claude Verified" : "Gemini Verified"}
+                        {msg.provider === "claude"
+                          ? "Claude Verified"
+                          : msg.provider === "gemini"
+                          ? "Gemini Verified"
+                          : "Groq LPU Verified"}
                       </span>
                     </span>
                   </div>
@@ -295,7 +313,11 @@ export default function ChatPage() {
             <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
             <span>
               Generating answer with{" "}
-              {provider === "gemini" ? "Google Gemini Flash..." : "Anthropic Claude 3.5..."}
+              {provider === "groq"
+                ? "Groq 120B (LPU)..."
+                : provider === "gemini"
+                ? "Google Gemini Flash..."
+                : "Anthropic Claude 3.5..."}
             </span>
           </div>
         )}
@@ -313,7 +335,13 @@ export default function ChatPage() {
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={`Ask ${provider === "gemini" ? "Google Gemini Flash" : "Claude 3.5"} anything...`}
+            placeholder={`Ask ${
+              provider === "groq"
+                ? "Groq 120B"
+                : provider === "gemini"
+                ? "Google Gemini Flash"
+                : "Claude 3.5"
+            } anything...`}
             disabled={busy}
             className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 disabled:opacity-50"
           />

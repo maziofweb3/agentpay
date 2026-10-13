@@ -16,6 +16,21 @@ export interface ModelRateCard {
  * Official Model Pricing Registry (Anthropic & Google Gemini AI Studio rate cards).
  */
 export const MODEL_RATES: Record<string, ModelRateCard> = {
+  "openai/gpt-oss-120b": {
+    name: "Groq GPT-OSS 120B",
+    inMTokUsd: 0.15,
+    outMTokUsd: 0.60,
+  },
+  "groq": {
+    name: "Groq GPT-OSS 120B",
+    inMTokUsd: 0.15,
+    outMTokUsd: 0.60,
+  },
+  "qwen/qwen3.8-27b": {
+    name: "Groq Qwen 3.8 27B",
+    inMTokUsd: 0.10,
+    outMTokUsd: 0.40,
+  },
   "gemini-flash-lite-latest": {
     name: "Google Gemini Flash Lite",
     inMTokUsd: 0.075,
@@ -314,21 +329,21 @@ export function calculatePromptApayWei(
   let isImagen = false;
 
   if (normPath === "/api/chat") {
-    selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : "gemini-flash-lite-latest";
+    selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : providerClean === "gemini" ? "gemini-flash-lite-latest" : "openai/gpt-oss-120b";
     serviceType = "chat";
   } else if (normPath === "/api/code") {
-    selectedModelKey = "claude-3-5-sonnet";
+    selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : providerClean === "gemini" ? "gemini-flash-lite-latest" : "openai/gpt-oss-120b";
     serviceType = "code";
   } else if (normPath === "/api/image") {
     if (input.hasImage) {
-      selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : "gemini-flash-lite-latest";
+      selectedModelKey = providerClean === "claude" ? "claude-3-5-sonnet" : providerClean === "gemini" ? "gemini-flash-lite-latest" : "openai/gpt-oss-120b";
       serviceType = "image";
     } else {
       selectedModelKey = "imagen-3";
       isImagen = true;
     }
   } else if (normPath === "/api/relay") {
-    selectedModelKey = "gemini-flash-lite-latest";
+    selectedModelKey = "openai/gpt-oss-120b";
     serviceType = "relay";
   } else {
     return null;

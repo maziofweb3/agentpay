@@ -62,7 +62,7 @@ export default function ImagePage() {
   } = useBalance(address, currentChainId);
 
   const [prompt, setPrompt] = useState("");
-  const [provider, setProvider] = useState<"gemini" | "claude">("gemini");
+  const [provider, setProvider] = useState<"groq" | "gemini" | "claude">("groq");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -185,14 +185,24 @@ export default function ImagePage() {
         </div>
         <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 space-x-1">
           <button
-            onClick={() => setProvider("gemini")}
+            onClick={() => setProvider("groq")}
             className={`px-2.5 py-1 rounded-md font-semibold transition text-[11px] ${
-              provider === "gemini"
+              provider === "groq"
                 ? "bg-amber-500 text-slate-950 shadow font-bold"
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            ✨ Google Gemini Flash
+            ⚡ Groq 120B
+          </button>
+          <button
+            onClick={() => setProvider("gemini")}
+            className={`px-2.5 py-1 rounded-md font-semibold transition text-[11px] ${
+              provider === "gemini"
+                ? "bg-blue-500 text-white shadow font-bold"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            ✨ Gemini
           </button>
           <button
             onClick={() => setProvider("claude")}

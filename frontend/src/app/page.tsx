@@ -59,7 +59,7 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <span className="inline-flex items-center space-x-1.5 bg-amber-400/10 text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-400/20">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Google Gemini & Claude 3.5</span>
+              <span>⚡ Groq 120B (Primary) & Gemini/Claude</span>
             </span>
             <span className="inline-flex items-center space-x-1 bg-purple-400/10 text-purple-400 text-xs font-medium px-2 py-0.5 rounded-full border border-purple-400/20">
               <Cpu className="w-3 h-3" />
