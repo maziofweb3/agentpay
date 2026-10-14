@@ -1,22 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "@/app/globals.css";
 import { WalletProvider } from "@/components/WalletProvider";
 import { TopNav } from "@/components/TopNav";
 import { BottomNav } from "@/components/BottomNav";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-plus-jakarta",
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "AgentPay AI — Autonomous Agent Cyber-FinTech on Arc",
@@ -47,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${plusJakarta.variable} font-sans bg-[#090D16] text-[#dfe2ef] min-h-screen antialiased selection:bg-purple-600 selection:text-white flex flex-col`}
+        className="font-sans bg-[#090D16] text-[#dfe2ef] min-h-screen antialiased selection:bg-purple-600 selection:text-white flex flex-col"
         suppressHydrationWarning
       >
         <WalletProvider>
