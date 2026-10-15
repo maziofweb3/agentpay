@@ -30,7 +30,10 @@ export type ActivityEvent =
   | "ai.code"
   | "ai.error"
   | "request.reject"
-  | "relay.dispatch";
+  | "relay.dispatch"
+  | "registry.record_ok"
+  | "registry.record_fail"
+  | "registry.record_skip";
 
 export interface ActivityFields {
   [key: string]: string | number | boolean | null | undefined;

@@ -14,7 +14,9 @@ export function useCanSwitchNetwork(): boolean {
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    setAllowed(canSwitchNetwork());
+    const result = canSwitchNetwork();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAllowed(result);
   }, []);
 
   return allowed;

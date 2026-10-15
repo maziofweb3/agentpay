@@ -187,6 +187,7 @@ export function WalletContextProvider({ children }: { children: ReactNode }) {
         try {
           localStorage.setItem(STORAGE_CHAIN_KEY, String(chainId));
         } catch {}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__agentpayChainId = chainId;
       }
 

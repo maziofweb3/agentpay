@@ -58,7 +58,8 @@ export function useSpendingAllowance(address: string | null, chainId: number = 9
   }, [address, chainId]);
 
   useEffect(() => {
-    refresh();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh();
     setReady(true);
   }, [refresh]);
 

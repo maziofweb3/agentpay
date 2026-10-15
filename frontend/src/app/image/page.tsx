@@ -293,7 +293,7 @@ export default function ImagePage() {
               </p>
             )}
             {result.enhancedPrompt && !result.imageFallback && (
-              <p className="text-xs text-slate-500 italic truncate">"{result.enhancedPrompt}"</p>
+              <p className="text-xs text-slate-500 italic truncate">&ldquo;{result.enhancedPrompt}&rdquo;</p>
             )}
             <img
               src={result.imageUrl}

@@ -9,6 +9,10 @@ import {
 import { addChainParams, chainById, rpcUrlFor } from "@/lib/chains";
 import { formatPaymentAtomic } from "@/lib/pricing";
 import { getPaymentAsset } from "@/lib/tokens";
+import {
+  appendJournalEntry,
+  pathToTool,
+} from "@/lib/prompt-journal";
 
 export interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -426,9 +430,9 @@ async function signEip3009Authorization(
 
 async function parseResponseOrThrow<T>(res: Response): Promise<T> {
   const text = await res.text().catch(() => "");
-  let json: any = null;
+  let json: Record<string, unknown> | null = null;
   try {
-    json = JSON.parse(text);
+    json = JSON.parse(text) as Record<string, unknown>;
   } catch {
     /* ignore */
   }
@@ -539,9 +543,26 @@ export function useX402Payment() {
       const paid = await fetch(url, mergeHeaders(init, { "X-Payment": xPayment }));
       const result = await parseResponseOrThrow<T>(paid);
       if (result && typeof result === "object") {
-        (result as any)._paidAmountFormatted = paidFormatted;
+        (result as Record<string, unknown>)._paidAmountFormatted = paidFormatted;
       }
       setStep("completed");
+
+      // Write to the local journal immediately so history is visible before
+      // on-chain confirmation. The settlement tx arrives async from the backend.
+      try {
+        appendJournalEntry(account, {
+          timestamp: new Date().toISOString(),
+          tool: pathToTool(url),
+          amountFormatted: paidFormatted,
+          amountAtomic: accept.amount,
+          network: accept.network,
+          nonce: authPayload.nonce,
+          settlementTx: null,
+        });
+      } catch {
+        /* journal write failure must never break the payment flow */
+      }
+
       return result;
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "Payment execution failed";

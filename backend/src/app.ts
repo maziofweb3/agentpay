@@ -35,6 +35,7 @@ import {
 } from "./lib/usdt-transfer-payment.js";
 import { trySessionPayment } from "./lib/session-payment.js";
 import { activity } from "./lib/activity-log.js";
+import { recordPromptOnChain } from "./lib/registry-recorder.js";
 import {
   validateTextField,
   preview,
@@ -399,6 +400,7 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
 
       res.on("finish", () => {
         if (res.statusCode >= 200 && res.statusCode < 400) {
+          const payer = String(payload.from ?? payload.payload?.authorization?.from ?? "");
           (
             facilitator.settle(payload, {
               network: payNet.caip2,
@@ -407,14 +409,22 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
               amount: requiredAmount.toString(),
             } as any) as Promise<any>
           )
-            .then((r: any) =>
+            .then((r: any) => {
               activity("payment.x402_settled", {
                 path: fullPath,
                 amount: formatPayment(paymentValue, payNet),
                 tx: String(r.transaction ?? "").slice(0, 14),
                 network: payNet.caip2,
-              })
-            )
+              });
+              // Record the prompt on-chain in the AgentPayRegistry after settlement.
+              recordPromptOnChain({
+                user: payer,
+                path: fullPath,
+                amountAtomic: requiredAmount,
+                assetAddress: payNet.asset,
+                network: payNet.caip2,
+              }).catch(() => {/* already logged inside recordPromptOnChain */});
+            })
             .catch((e: Error) =>
               activity(
                 "payment.settle_fail",
@@ -468,6 +478,14 @@ app.use("/api/*", async (req: Request, res: Response, next: NextFunction) => {
             txHash: result.txHash,
             status: res.statusCode,
           });
+          // Record the prompt on-chain in the AgentPayRegistry after legacy settlement.
+          recordPromptOnChain({
+            user: result.from,
+            path: fullPath,
+            amountAtomic: result.amount,
+            assetAddress: requestedNet.asset,
+            network: requestedNet.caip2,
+          }).catch(() => {/* already logged inside recordPromptOnChain */});
         } else {
           activity(
             "payment.transfer_ok",

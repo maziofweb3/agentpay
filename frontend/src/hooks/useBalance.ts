@@ -83,8 +83,9 @@ export function useBalance(address: string | null | undefined, chainId?: number)
   }, [address, resolvedChainId]);
 
   useEffect(() => {
-    fetchBalances();
-    const interval = setInterval(fetchBalances, 15000);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchBalances();
+    const interval = setInterval(() => { void fetchBalances(); }, 15000);
     return () => clearInterval(interval);
   }, [fetchBalances]);
 

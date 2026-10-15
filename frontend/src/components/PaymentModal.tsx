@@ -73,6 +73,7 @@ export function PaymentModal({
   // Reset / seed when modal opens or balance changes.
   useEffect(() => {
     if (!isOpen || !needsTopUp) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTouched(false);
     if (!canAfford) {
       setAmountInput(maxAuth > 0 ? maxAuth.toFixed(2) : "");

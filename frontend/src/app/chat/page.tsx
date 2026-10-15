@@ -82,6 +82,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, userMsg]);
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = await runPaid<any>({ prompt: userPrompt, provider: activeProvider });
       const aiText = typeof data === "string" ? data : data?.response;
       if (!aiText) {
