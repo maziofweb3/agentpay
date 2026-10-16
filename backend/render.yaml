@@ -67,11 +67,11 @@ services:
         value: "https://dex-wallet.botchain.ai/api/v1/price?token=0x4a781889Ce38c08B86b02e084A5A19609376b857&pool_type=all"
       # Arc Registry Proxies
       - key: PAYMENT_RECIPIENT_ADDRESS_ARC_TESTNET
-        value: "0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C"
+        value: "0xc3129d520a799e6e27c9dd0bb7891ac92b4146c2"
       - key: PAYMENT_RECIPIENT_ADDRESS_ARC_MAINNET
         value: "0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0"
       - key: AGENT_PAY_REGISTRY_ARC_TESTNET
-        value: "0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C"
+        value: "0xc3129d520a799e6e27c9dd0bb7891ac92b4146c2"
       - key: AGENT_PAY_REGISTRY_ARC_MAINNET
         value: "0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0"
       # Secrets — Dashboard only. Omission does not delete existing values.

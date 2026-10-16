@@ -114,13 +114,21 @@ export default function HistoryPage() {
                 On-Chain Payment Telemetry & Settlement
               </h1>
               <p className="text-[11px] text-slate-400 font-mono">
-                Live reads from AgentPayRegistry ({truncatedRegistry}) • Arc Network (5042)
+                Live reads from AgentPayRegistry ({truncatedRegistry}) • {isTestnet ? "Arc Testnet (5042002)" : "Arc Mainnet (5042)"}
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-center">
+          <button
+            onClick={() => switchOrAddChain(isTestnet ? 5042 : 5042002)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#131826] hover:bg-[#1A2234] border border-white/8 text-xs font-mono text-purple-300 hover:text-white transition cursor-pointer"
+            title={`Switch to ${isTestnet ? "Arc Mainnet" : "Arc Testnet"}`}
+          >
+            <Layers className="w-3.5 h-3.5 text-purple-400" />
+            <span>{isTestnet ? "Arc Testnet" : "Arc Mainnet"}</span>
+          </button>
           <button
             onClick={handleRefreshAll}
             disabled={contractLoading}
@@ -273,7 +281,7 @@ export default function HistoryPage() {
               </div>
               <div className="flex items-center justify-between text-slate-400">
                 <span>Network:</span>
-                <span className="text-slate-200">Arc Network (Chain 5042)</span>
+                <span className="text-slate-200">{isTestnet ? "Arc Testnet (Chain 5042002)" : "Arc Mainnet (Chain 5042)"}</span>
               </div>
             </div>
 

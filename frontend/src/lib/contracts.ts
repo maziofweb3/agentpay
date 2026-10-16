@@ -26,7 +26,7 @@ export const REGISTRY_ADDRESSES: Record<number, `0x${string}`> = {
   // Arc Testnet
   5042002:
     (process.env.NEXT_PUBLIC_AGENT_PAY_REGISTRY_ARC_TESTNET_ADDRESS as `0x${string}`) ||
-    "0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C",
+    "0xc3129d520a799e6e27c9dd0bb7891ac92b4146c2",
 };
 
 export const USDC_ADDRESS_ARC: `0x${string}` =

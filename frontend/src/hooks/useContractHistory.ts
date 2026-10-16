@@ -114,8 +114,8 @@ export function useContractHistory(
           "event PromptRecorded(address indexed user, string agentId, string toolType, uint256 amountPaid, address indexed paymentAsset, uint256 timestamp)"
         );
 
-        // Arc block time is ~1-2s. 604,800 blocks is ~7-14 days of history.
-        const SCAN_BLOCKS = 604_800n;
+        // Arc public RPC enforces max range of < 10,000 blocks. 8,000 blocks scans recent activity safely without timeouts.
+        const SCAN_BLOCKS = 8_000n;
         const currentBlock = await client.getBlockNumber().catch(() => null);
         const fromBlock =
           currentBlock && currentBlock > SCAN_BLOCKS

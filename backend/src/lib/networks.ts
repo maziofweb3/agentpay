@@ -41,7 +41,7 @@ export const ARC_TESTNET = {
   payTo: addr(
     process.env.PAYMENT_RECIPIENT_ADDRESS_ARC_TESTNET,
     process.env.AGENT_PAY_REGISTRY_ARC_TESTNET,
-    "0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C"
+    "0xc3129d520a799e6e27c9dd0bb7891ac92b4146c2"
   ),
 };
 
