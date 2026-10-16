@@ -1,14 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "@/app/globals.css";
 import { WalletProvider } from "@/components/WalletProvider";
+import { TopNav } from "@/components/TopNav";
 import { BottomNav } from "@/components/BottomNav";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: "AgentPay AI — Pay-Per-Prompt AI on Arc",
-  description: "Premier AI intelligence at ultra-low cost, charging strictly per use with USDC micropayments on Arc instead of bulky subscriptions.",
+  title: "AgentPay AI — Autonomous Agent Cyber-FinTech on Arc",
+  description:
+    "Premier Web3 AI intelligence at ultra-low cost, charging strictly per use with USDC micropayments on Arc instead of bulky subscriptions. Gasless EIP-3009 signatures.",
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },
@@ -34,11 +33,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${inter.className} bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-amber-400 selection:text-slate-900 pb-16`}
+        className="font-sans bg-[#090D16] text-[#dfe2ef] min-h-screen antialiased selection:bg-purple-600 selection:text-white flex flex-col"
         suppressHydrationWarning
       >
         <WalletProvider>
-          {children}
+          <TopNav />
+          <div className="flex-1 pb-24 md:pb-8">{children}</div>
           <BottomNav />
         </WalletProvider>
       </body>

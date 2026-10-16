@@ -1,218 +1,392 @@
 "use client";
 
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { useWallet } from "@/hooks/useWallet";
 import { useBalance } from "@/hooks/useBalance";
 import { useCanSwitchNetwork } from "@/hooks/useCanSwitchNetwork";
-import { usePromptHistory } from "@/hooks/usePromptHistory";
+import { useContractHistory } from "@/hooks/useContractHistory";
 import { BalanceBar } from "@/components/BalanceBar";
 import {
   History,
   ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
   ArrowLeft,
+  Bot,
+  Image as ImageIcon,
+  Code,
+  ChevronDown,
+  ChevronUp,
+  FileCheck2,
+  ShieldCheck,
   RefreshCw,
-  Loader2,
-  Wallet,
+  Coins,
+  Cpu,
+  Layers,
+  Vault,
 } from "lucide-react";
-import Link from "next/link";
 
 export default function HistoryPage() {
   const allowNetworkSwitch = useCanSwitchNetwork();
+  const { address, currentChainId, isTestnet, disconnectWallet, switchOrAddChain } = useWallet();
   const {
-    address,
-    currentChainId,
-    isTestnet,
-    disconnectWallet,
-    switchOrAddChain,
-  } = useWallet();
-  const { usdcBalance, loading: balanceLoading, refetch } = useBalance(
-    address,
-    currentChainId
-  );
-  const { items, loading, syncing, error, refresh } = usePromptHistory(
-    address,
-    currentChainId
-  );
+    usdcBalance,
+    loading: balanceLoading,
+    refetch: refetchBalance,
+  } = useBalance(address, currentChainId);
 
-  const networkLabel = isTestnet ? "Arc Testnet" : "Arc Mainnet";
+  const {
+    userPrompts,
+    totalPrompts,
+    totalVolumeUsdc,
+    vaultBalanceUsdc,
+    events,
+    registryAddress,
+    loading: contractLoading,
+    refetch: refetchContract,
+  } = useContractHistory(address, currentChainId);
+
+  const [activeFilter, setActiveFilter] = useState<"all" | "chat" | "image" | "code">("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((item) => {
+      if (activeFilter === "all") return true;
+      const lowerTool = item.toolType.toLowerCase();
+      if (activeFilter === "chat") return lowerTool.includes("chat") || lowerTool.includes("text");
+      if (activeFilter === "image") return lowerTool.includes("image");
+      if (activeFilter === "code") return lowerTool.includes("code") || lowerTool.includes("audit");
+      return true;
+    });
+  }, [events, activeFilter]);
+
+  async function handleRefreshAll() {
+    await Promise.allSettled([refetchBalance(), refetchContract()]);
+  }
+
+  const truncatedRegistry = registryAddress
+    ? `${registryAddress.slice(0, 6)}...${registryAddress.slice(-4)}`
+    : "";
+
+  const explorerBase = isTestnet
+    ? "https://explorer.testnet.arc.io"
+    : "https://explorer.arc.io";
 
   return (
-    <main className="flex flex-col min-h-screen max-w-md mx-auto bg-slate-950 text-slate-100 shadow-2xl border-x border-slate-800">
-      <BalanceBar
-        address={address}
-        usdcBalance={usdcBalance}
-        loading={balanceLoading}
-        onRefresh={refetch}
-        onDisconnect={disconnectWallet}
-        currentChainId={currentChainId}
-        isTestnet={isTestnet}
-        onSwitchNetwork={(chainId) => switchOrAddChain(chainId)}
-        allowNetworkSwitch={allowNetworkSwitch}
-      />
+    <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      {/* Mobile BalanceBar */}
+      <div className="md:hidden">
+        <BalanceBar
+          address={address}
+          usdcBalance={usdcBalance}
+          loading={balanceLoading}
+          onRefresh={handleRefreshAll}
+          onDisconnect={disconnectWallet}
+          currentChainId={currentChainId}
+          isTestnet={isTestnet}
+          onSwitchNetwork={(chainId) => switchOrAddChain(chainId)}
+          allowNetworkSwitch={allowNetworkSwitch}
+        />
+      </div>
 
-      {/* Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      {/* Header Bar */}
+      <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-white/8 bg-[#0D111C]/90 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="p-1.5 bg-slate-900 text-slate-400 hover:text-white rounded-lg border border-slate-800 transition"
+            className="p-2 rounded-xl bg-[#131826] text-slate-400 hover:text-white border border-white/8 hover:bg-white/5 transition"
+            title="Back to Home"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="flex items-center space-x-2">
-            <History className="w-5 h-5 text-amber-400" />
-            <h1 className="font-bold text-white text-base">Payment History</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#131826] border border-white/8 p-1.5 flex items-center justify-center shrink-0">
+              <Image
+                src="/agentpay-mark.png"
+                alt="AgentPay Logo"
+                width={32}
+                height={32}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <h1 className="font-display font-bold text-base sm:text-lg text-white flex items-center gap-2">
+                On-Chain Payment Telemetry & Settlement
+              </h1>
+              <p className="text-[11px] text-slate-400 font-mono">
+                Live reads from AgentPayRegistry ({truncatedRegistry}) • Arc Network (5042)
+              </p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          {syncing && (
-            <span className="text-[10px] text-slate-400 flex items-center space-x-1">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              <span>syncing</span>
-            </span>
-          )}
+
+        <div className="flex items-center gap-2 self-end sm:self-center">
           <button
-            onClick={refresh}
-            disabled={loading || syncing}
-            className="p-1.5 bg-slate-900 text-slate-400 hover:text-amber-400 rounded-lg border border-slate-800 transition disabled:opacity-40"
-            title="Refresh history"
+            onClick={handleRefreshAll}
+            disabled={contractLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#131826] hover:bg-[#1A2234] border border-white/8 text-xs font-mono text-slate-300 hover:text-white transition cursor-pointer disabled:opacity-50"
+            title="Refresh on-chain state"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${contractLoading ? "animate-spin text-cyan-400" : ""}`} />
+            <span>{contractLoading ? "Syncing..." : "Sync Chain"}</span>
           </button>
-          <span className="text-xs font-semibold text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-800/50">
-            {networkLabel}
-          </span>
+          <a
+            href={`${explorerBase}/address/${registryAddress}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-900/40 transition"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Arc Registry</span>
+            <ExternalLink className="w-3 h-3 ml-0.5" />
+          </a>
         </div>
       </div>
 
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {/* Info banner */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 space-y-1 text-xs">
-          <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Onchain Micropayments Tracked</span>
+      {/* On-Chain Contract Telemetry Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Card 1: User On-Chain Prompts */}
+        <div className="glass-panel rounded-2xl p-4 border border-white/8 bg-[#0D111C]/80 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
+              Your Prompts
+            </span>
+            <span className="text-[10px] font-mono text-cyan-400 px-1.5 py-0.5 rounded bg-cyan-500/10">
+              userPromptCounts
+            </span>
           </div>
-          <p className="text-slate-400">
-            All micropayments settle via x402 on Arc with USDC EIP-3009 gasless
-            signatures and are recorded in the AgentPayRegistry contract.
-          </p>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display font-bold text-xl sm:text-2xl text-cyan-300">
+              {userPrompts}
+            </span>
+            <span className="text-xs font-mono text-slate-400">{userPrompts === 1 ? "Call" : "Calls"}</span>
+          </div>
         </div>
 
-        {/* Not connected */}
-        {!address && (
-          <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
-            <Wallet className="w-10 h-10 text-slate-600" />
-            <p className="text-slate-400 text-sm">
-              Connect your wallet to view your payment history.
-            </p>
+        {/* Card 2: Global Protocol Prompts */}
+        <div className="glass-panel rounded-2xl p-4 border border-white/8 bg-[#0D111C]/80 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
+              Total Recorded
+            </span>
+            <span className="text-[10px] font-mono text-purple-400 px-1.5 py-0.5 rounded bg-purple-500/10">
+              totalPrompts
+            </span>
           </div>
-        )}
-
-        {/* Loading skeleton */}
-        {address && loading && (
-          <div className="space-y-2.5">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl animate-pulse h-16"
-              />
-            ))}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display font-bold text-xl sm:text-2xl text-purple-300">
+              {totalPrompts}
+            </span>
+            <span className="text-xs font-mono text-slate-400">Total</span>
           </div>
-        )}
+        </div>
 
-        {/* Error state */}
-        {address && !loading && error && (
-          <div className="bg-red-950/40 border border-red-800/50 rounded-xl p-3.5 text-xs text-red-400">
-            <p className="font-semibold">Could not load on-chain history</p>
-            <p className="text-red-500/80 mt-0.5">{error}</p>
-            <p className="text-slate-400 mt-1">
-              Showing locally cached entries. Tap refresh to retry.
-            </p>
+        {/* Card 3: Total Volume Settled */}
+        <div className="glass-panel rounded-2xl p-4 border border-white/8 bg-[#0D111C]/80 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
+              Volume Settled
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10">
+              totalVolume
+            </span>
           </div>
-        )}
-
-        {/* Empty state */}
-        {address && !loading && items.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
-            <History className="w-10 h-10 text-slate-600" />
-            <p className="text-slate-400 text-sm">No payments yet.</p>
-            <p className="text-slate-500 text-xs">
-              Your activity will appear here after your first paid prompt.
-            </p>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display font-bold text-xl sm:text-2xl text-emerald-300 font-mono">
+              {totalVolumeUsdc}
+            </span>
+            <span className="text-xs font-mono text-slate-400">USDC</span>
           </div>
-        )}
+        </div>
 
-        {/* History list */}
-        {address && !loading && items.length > 0 && (
-          <div className="space-y-2.5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
-              Recent Micropayments
-              {items.length > 0 && (
-                <span className="ml-2 text-slate-500 normal-case font-normal">
-                  ({items.length})
-                </span>
-              )}
-            </h2>
+        {/* Card 4: Vault Balance Backing */}
+        <div className="glass-panel rounded-2xl p-4 border border-white/8 bg-[#0D111C]/80 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider block">
+              Vault Collateral
+            </span>
+            <span className="text-[10px] font-mono text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10">
+              vaultBalance
+            </span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display font-bold text-xl sm:text-2xl text-amber-300 font-mono">
+              {vaultBalanceUsdc}
+            </span>
+            <span className="text-xs font-mono text-slate-400">USDC</span>
+          </div>
+        </div>
+      </div>
 
-            {items.map((item) => (
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {(["all", "chat", "image", "code"] as const).map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setActiveFilter(cat)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-medium capitalize transition cursor-pointer shrink-0 ${
+              activeFilter === cat
+                ? "bg-[#0AA082]/20 border border-[#0AA082]/50 text-white font-bold shadow-md shadow-[#0AA082]/20"
+                : "bg-[#131826] border border-white/6 text-slate-400 hover:text-white"
+            }`}
+          >
+            {cat === "all" ? "All On-Chain Records" : cat}
+          </button>
+        ))}
+      </div>
+
+      {/* History Items & Proof Drawers or Authentic Zero State */}
+      <div className="space-y-3">
+        {filteredEvents.length === 0 ? (
+          <div className="glass-panel rounded-3xl p-8 sm:p-12 border border-white/8 bg-gradient-to-b from-[#131826]/80 to-[#0A0E17]/90 text-center space-y-4 shadow-xl">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-[#131826] border border-white/10 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
+              <FileCheck2 className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1.5 max-w-md mx-auto">
+              <h3 className="font-display font-bold text-base sm:text-lg text-white">
+                No On-Chain Invocations Recorded Yet
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-sans">
+                {address
+                  ? `Wallet ${address.slice(0, 6)}...${address.slice(-4)} has 0 prompt receipts logged on AgentPayRegistry.`
+                  : "Connect your Web3 wallet to verify your on-chain settlement receipts on Arc Network."}
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#090D16]/90 border border-white/6 max-w-md mx-auto text-left text-xs font-mono space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span>Contract Target:</span>
+                <a
+                  href={`${explorerBase}/address/${registryAddress}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-cyan-400 hover:underline flex items-center gap-1 font-bold"
+                >
+                  <span>{truncatedRegistry}</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>Settlement Asset:</span>
+                <span className="text-slate-200">USDC (6 Decimals)</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>Network:</span>
+                <span className="text-slate-200">Arc Network (Chain 5042)</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/chat"
+                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-900/30 transition cursor-pointer"
+              >
+                <Bot className="w-4 h-4 text-cyan-300" />
+                <span>Launch AI Text Assistant</span>
+              </Link>
+              <Link
+                href="/image"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#131826] hover:bg-[#1A2234] border border-white/8 text-slate-300 hover:text-white font-medium text-xs transition"
+              >
+                <ImageIcon className="w-4 h-4 text-slate-400" />
+                <span>Create AI Image</span>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          filteredEvents.map((item) => {
+            const isExpanded = expandedId === item.id;
+            const lowerTool = item.toolType.toLowerCase();
+            const Icon = lowerTool.includes("image")
+              ? ImageIcon
+              : lowerTool.includes("code") || lowerTool.includes("audit")
+              ? Code
+              : Bot;
+
+            const truncatedTx = item.txHash
+              ? `${item.txHash.slice(0, 10)}...${item.txHash.slice(-8)}`
+              : "On-Chain Receipt";
+
+            return (
               <div
                 key={item.id}
-                className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex items-center justify-between gap-3"
+                className="glass-panel rounded-2xl border border-white/8 bg-[#0D111C]/85 hover:border-white/15 transition-all overflow-hidden shadow-lg"
               >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                    <h3 className="font-semibold text-white text-xs truncate">
-                      {item.tool}
-                    </h3>
-                    {item.status === "settled" ? (
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center space-x-1 shrink-0">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Settled ({isTestnet ? "Testnet" : "Arc"})</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded flex items-center space-x-1 shrink-0">
-                        <Clock className="w-3 h-3" />
-                        <span>Pending</span>
-                      </span>
-                    )}
+                {/* Summary Row */}
+                <div
+                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  className="p-4 sm:p-5 flex items-center justify-between gap-4 cursor-pointer"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-300 shrink-0">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-display font-bold text-sm text-white truncate">
+                          {item.toolType}
+                        </h3>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 font-semibold shrink-0">
+                          Settled On-Chain
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
+                        Block #{item.blockNumber.toString()} • {item.formattedDate}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 text-[11px] text-slate-400 flex-wrap gap-y-0.5">
-                    <span>{item.timestamp}</span>
-                    {item.txHash && (
-                      <>
-                        <span>•</span>
-                        <a
-                          href={item.explorerUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center space-x-1 text-amber-400 hover:text-amber-300 font-mono transition"
-                          title="View on explorer"
-                        >
-                          <span>
-                            {item.txHash.slice(0, 6)}…{item.txHash.slice(-4)}
-                          </span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </>
-                    )}
-                    {!item.txHash && (
-                      <>
-                        <span>•</span>
-                        <span className="text-slate-500 italic">awaiting confirmation</span>
-                      </>
-                    )}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono text-xs sm:text-sm font-bold text-cyan-300 px-3 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
+                      {item.amountPaid}
+                    </span>
+                    <div className="text-slate-400 hover:text-white transition">
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
                   </div>
                 </div>
 
-                <span className="text-xs font-bold text-amber-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 shrink-0 whitespace-nowrap">
-                  {item.amountFormatted}
-                </span>
+                {/* Cryptographic Proof Drawer (Expanded) */}
+                {isExpanded && (
+                  <div className="px-4 sm:px-5 pb-5 pt-2 border-t border-white/6 bg-[#0A0E17]/80 space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span className="flex items-center gap-1.5 text-cyan-300 font-semibold">
+                        <FileCheck2 className="w-4 h-4 text-cyan-400" />
+                        PromptRecorded Contract Event
+                      </span>
+                      {item.txHash && (
+                        <a
+                          href={`${explorerBase}/tx/${item.txHash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 text-purple-400 hover:text-purple-300 transition"
+                        >
+                          <span>ArcScan Explorer</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+                      <div className="p-2.5 rounded-xl bg-[#131826] border border-white/5 space-y-1">
+                        <span className="text-[10px] text-slate-500 block uppercase">Transaction Hash</span>
+                        <span className="text-slate-200 truncate block font-bold">{truncatedTx}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#131826] border border-white/5 space-y-1">
+                        <span className="text-[10px] text-slate-500 block uppercase">Block Number</span>
+                        <span className="text-slate-200 truncate block font-bold">#{item.blockNumber.toString()}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#131826] border border-white/5 space-y-1">
+                        <span className="text-[10px] text-slate-500 block uppercase">Registry Vault</span>
+                        <span className="text-slate-200 truncate block font-bold">{truncatedRegistry}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })
         )}
       </div>
     </main>
