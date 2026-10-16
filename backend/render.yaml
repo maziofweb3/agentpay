@@ -93,3 +93,5 @@ services:
         sync: false
       - key: PAYMENT_RECIPIENT_ADDRESS_MAINNET
         sync: false
+      - key: REGISTRY_OWNER_PRIVATE_KEY
+        sync: false

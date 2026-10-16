@@ -10,6 +10,8 @@ import {
   USDC_ADDRESS_ARC,
 } from "@/lib/contracts";
 
+import { getStoredHistory } from "@/lib/history";
+
 export interface OnChainEventRecord {
   id: string;
   txHash: string;
@@ -22,6 +24,8 @@ export interface OnChainEventRecord {
   paymentAsset: string;
   timestamp: number;
   formattedDate: string;
+  status?: "confirmed" | "confirming";
+  nonce?: string;
 }
 
 export interface ContractHistoryState {
@@ -100,15 +104,23 @@ export function useContractHistory(
         reads[3].status === "fulfilled" ? (reads[3].value as bigint) : BigInt(0);
 
       setTotalPrompts(Number(globalPromptsRaw));
-      setUserPrompts(Number(userPromptsRaw));
       setTotalVolumeUsdc(Number(formatUnits(volumeRaw, 6)).toFixed(4));
       setVaultBalanceUsdc(Number(formatUnits(vaultBalRaw, 6)).toFixed(2));
 
-      // 2. Query on-chain PromptRecorded event logs
+      // 2. Query on-chain PromptRecorded event logs with block bounding
+      let onChainRecords: OnChainEventRecord[] = [];
       try {
         const promptEvent = parseAbiItem(
           "event PromptRecorded(address indexed user, string agentId, string toolType, uint256 amountPaid, address indexed paymentAsset, uint256 timestamp)"
         );
+
+        // Arc block time is ~1-2s. 604,800 blocks is ~7-14 days of history.
+        const SCAN_BLOCKS = 604_800n;
+        const currentBlock = await client.getBlockNumber().catch(() => null);
+        const fromBlock =
+          currentBlock && currentBlock > SCAN_BLOCKS
+            ? currentBlock - SCAN_BLOCKS
+            : 0n;
 
         const logs = await client.getLogs({
           address: registryAddress,
@@ -117,10 +129,10 @@ export function useContractHistory(
             address && isAddress(address)
               ? { user: address as `0x${string}` }
               : undefined,
-          fromBlock: "earliest",
+          fromBlock,
         });
 
-        const parsedEvents: OnChainEventRecord[] = logs.map((log, idx) => {
+        onChainRecords = logs.map((log, idx) => {
           const rawAmount = log.args.amountPaid ? log.args.amountPaid : BigInt(0);
           const numericAmount = Number(formatUnits(rawAmount, 6));
           const timestampSec = log.args.timestamp
@@ -139,16 +151,77 @@ export function useContractHistory(
             paymentAsset: log.args.paymentAsset || USDC_ADDRESS_ARC,
             timestamp: timestampSec,
             formattedDate: new Date(timestampSec * 1000).toLocaleString(),
+            status: "confirmed" as const,
           };
         });
-
-        // Sort latest first
-        parsedEvents.reverse();
-        setEvents(parsedEvents);
       } catch (logErr) {
-        console.warn("[useContractHistory] Unable to fetch logs (from earliest):", logErr);
-        setEvents([]);
+        console.warn("[useContractHistory] Unable to fetch on-chain logs:", logErr);
       }
+
+      // 3. Merge optimistic local journal records from localStorage
+      const localStored = getStoredHistory();
+      const onChainTxSet = new Set(
+        onChainRecords.map((r) => r.txHash.toLowerCase()).filter(Boolean)
+      );
+
+      const pendingLocalRecords: OnChainEventRecord[] = [];
+      for (const rec of localStored) {
+        if (rec.txHash && onChainTxSet.has(rec.txHash.toLowerCase())) {
+          // Already indexed on chain
+          continue;
+        }
+
+        const recTimeSec =
+          Math.floor(new Date(rec.timestamp).getTime() / 1000) ||
+          Math.floor(Date.now() / 1000);
+
+        // Check if an on-chain record matches within 180 seconds with same tool & amount
+        const alreadyMatched = onChainRecords.some((oc) => {
+          const timeDiff = Math.abs(oc.timestamp - recTimeSec);
+          const sameAmount = Math.abs(oc.amountNumeric - rec.amountNumeric) < 0.0001;
+          const sameTool =
+            oc.toolType.toLowerCase().includes(rec.category.toLowerCase()) ||
+            rec.tool.toLowerCase().includes(oc.toolType.toLowerCase());
+          return timeDiff < 180 && sameAmount && sameTool;
+        });
+
+        if (!alreadyMatched) {
+          pendingLocalRecords.push({
+            id: rec.id,
+            txHash: rec.txHash || "",
+            blockNumber: BigInt(0),
+            user: address || "",
+            agentId: "agentpay-ai",
+            toolType:
+              rec.tool ||
+              (rec.category === "image"
+                ? "AI Image Generator"
+                : rec.category === "code"
+                ? "Smart Contract Auditor"
+                : "AI Text Assistant"),
+            amountPaid: rec.amount.includes("USDC")
+              ? rec.amount
+              : `${rec.amountNumeric.toFixed(4)} USDC`,
+            amountNumeric: rec.amountNumeric,
+            paymentAsset: USDC_ADDRESS_ARC,
+            timestamp: recTimeSec,
+            formattedDate: new Date(rec.timestamp).toLocaleString(),
+            status: "confirming" as const,
+            nonce: rec.nonce,
+          });
+        }
+      }
+
+      // Combine: pending local first, then on-chain records sorted newest first
+      const combined = [
+        ...pendingLocalRecords,
+        ...onChainRecords.sort((a, b) => b.timestamp - a.timestamp),
+      ];
+      setEvents(combined);
+
+      // If userPromptsRaw on contract has not updated yet, show at least combined count
+      const totalUserCount = Math.max(Number(userPromptsRaw), combined.length);
+      setUserPrompts(totalUserCount);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[useContractHistory] Contract read error:", msg);

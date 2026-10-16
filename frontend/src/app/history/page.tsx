@@ -304,9 +304,10 @@ export default function HistoryPage() {
               ? Code
               : Bot;
 
+            const isConfirming = item.status === "confirming" || item.blockNumber === 0n;
             const truncatedTx = item.txHash
               ? `${item.txHash.slice(0, 10)}...${item.txHash.slice(-8)}`
-              : "On-Chain Receipt";
+              : "Confirming on Arc...";
 
             return (
               <div
@@ -327,12 +328,20 @@ export default function HistoryPage() {
                         <h3 className="font-display font-bold text-sm text-white truncate">
                           {item.toolType}
                         </h3>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 font-semibold shrink-0">
-                          Settled On-Chain
-                        </span>
+                        {isConfirming ? (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 font-semibold shrink-0 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            Confirming On-Chain
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 font-semibold shrink-0">
+                            Settled On-Chain
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
-                        Block #{item.blockNumber.toString()} • {item.formattedDate}
+                        {item.blockNumber > 0n ? `Block #${item.blockNumber.toString()} • ` : ""}
+                        {item.formattedDate}
                       </p>
                     </div>
                   </div>
@@ -353,9 +362,11 @@ export default function HistoryPage() {
                     <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
                       <span className="flex items-center gap-1.5 text-cyan-300 font-semibold">
                         <FileCheck2 className="w-4 h-4 text-cyan-400" />
-                        PromptRecorded Contract Event
+                        {isConfirming
+                          ? "Payment Settled (Recording on Arc Registry)"
+                          : "PromptRecorded Contract Event"}
                       </span>
-                      {item.txHash && (
+                      {item.txHash ? (
                         <a
                           href={`${explorerBase}/tx/${item.txHash}`}
                           target="_blank"
@@ -365,6 +376,11 @@ export default function HistoryPage() {
                           <span>ArcScan Explorer</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
+                      ) : (
+                        <span className="text-amber-400/80 text-[11px] font-mono flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                          Mining block receipt
+                        </span>
                       )}
                     </div>
 
@@ -375,7 +391,9 @@ export default function HistoryPage() {
                       </div>
                       <div className="p-2.5 rounded-xl bg-[#131826] border border-white/5 space-y-1">
                         <span className="text-[10px] text-slate-500 block uppercase">Block Number</span>
-                        <span className="text-slate-200 truncate block font-bold">#{item.blockNumber.toString()}</span>
+                        <span className="text-slate-200 truncate block font-bold">
+                          {item.blockNumber > 0n ? `#${item.blockNumber.toString()}` : "Awaiting Block"}
+                        </span>
                       </div>
                       <div className="p-2.5 rounded-xl bg-[#131826] border border-white/5 space-y-1">
                         <span className="text-[10px] text-slate-500 block uppercase">Registry Vault</span>

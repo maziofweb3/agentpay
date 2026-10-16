@@ -57,8 +57,12 @@ services:
         value: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
       - key: ERC8004_REPUTATION_ARC_MAINNET
         value: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
+      - key: DEFAULT_AI_PROVIDER
+        value: groq
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
       - key: GEMINI_MODEL
-        value: gemini-3.6-flash
+        value: gemini-flash-lite-latest
       - key: ANTHROPIC_MODEL
         value: claude-3-5-sonnet-20241022
       - key: APAY_PRICE_FALLBACK_USD
@@ -67,16 +71,18 @@ services:
         value: "60"
       - key: APAY_PRICE_API_URL
         value: "https://dex-wallet.botchain.ai/api/v1/price?token=0x4a781889Ce38c08B86b02e084A5A19609376b857&pool_type=all"
-      # After DeployArcRegistry: set these four to the proxy (Registry is payTo).
+      # Arc Registry Proxies
       - key: PAYMENT_RECIPIENT_ADDRESS_ARC_TESTNET
-        value: ""
+        value: "0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C"
       - key: PAYMENT_RECIPIENT_ADDRESS_ARC_MAINNET
-        value: ""
+        value: "0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0"
       - key: AGENT_PAY_REGISTRY_ARC_TESTNET
-        value: ""
+        value: "0x2729d7F32659b0FC1A483f4E400FaA7b35440b2C"
       - key: AGENT_PAY_REGISTRY_ARC_MAINNET
-        value: ""
+        value: "0x2c126Af5F25e02B11DaB8aeD74A27340e018D9F0"
       # Secrets — Dashboard only. Omission does not delete existing values.
+      - key: GROQ_API_KEY
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
@@ -92,4 +98,6 @@ services:
       - key: SESSION_SECRET
         sync: false
       - key: PAYMENT_RECIPIENT_ADDRESS_MAINNET
+        sync: false
+      - key: REGISTRY_OWNER_PRIVATE_KEY
         sync: false
