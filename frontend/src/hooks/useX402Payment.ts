@@ -9,10 +9,7 @@ import {
 import { addChainParams, chainById, rpcUrlFor } from "@/lib/chains";
 import { formatPaymentAtomic } from "@/lib/pricing";
 import { getPaymentAsset } from "@/lib/tokens";
-import {
-  appendJournalEntry,
-  pathToTool,
-} from "@/lib/prompt-journal";
+import { saveHistoryRecord } from "@/lib/history";
 
 export interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -547,17 +544,27 @@ export function useX402Payment() {
       }
       setStep("completed");
 
-      // Write to the local journal immediately so history is visible before
-      // on-chain confirmation. The settlement tx arrives async from the backend.
+      // Write to localStorage journal immediately so history is visible before
+      // on-chain confirmation. Uses the shared history.ts PaymentRecord format.
       try {
-        appendJournalEntry(account, {
+        const pathLower = url.toLowerCase();
+        const category: "chat" | "image" | "code" = pathLower.includes("image")
+          ? "image"
+          : pathLower.includes("code")
+          ? "code"
+          : "chat";
+        saveHistoryRecord({
+          id: `${authPayload.nonce}-${Date.now()}`,
+          category,
+          tool: category === "image" ? "AI Image Generator" : category === "code" ? "Smart Contract Auditor" : "AI Text Assistant",
+          model: "",
+          amount: paidFormatted,
+          amountNumeric: Number(accept.amount) / 1e6,
           timestamp: new Date().toISOString(),
-          tool: pathToTool(url),
-          amountFormatted: paidFormatted,
-          amountAtomic: accept.amount,
-          network: accept.network,
+          txHash: "",
           nonce: authPayload.nonce,
-          settlementTx: null,
+          facilitator: accept.network,
+          status: "settled",
         });
       } catch {
         /* journal write failure must never break the payment flow */

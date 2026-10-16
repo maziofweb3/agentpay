@@ -159,7 +159,8 @@ export function useContractHistory(
   }, [address, chainId, registryAddress]);
 
   useEffect(() => {
-    fetchContractData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchContractData();
   }, [fetchContractData]);
 
   return {

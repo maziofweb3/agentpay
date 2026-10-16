@@ -424,7 +424,7 @@ export default function ImagePage() {
                   disabled={busy}
                   className="w-full text-left p-2.5 rounded-xl bg-[#131826]/70 hover:bg-[#1A2234] border border-white/5 hover:border-cyan-500/30 text-xs text-slate-300 transition cursor-pointer line-clamp-2"
                 >
-                  "{p}"
+                  &quot;{p}&quot;
                 </button>
               ))}
             </div>

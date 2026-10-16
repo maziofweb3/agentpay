@@ -102,7 +102,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      const data = await runPaid<any>({ prompt: textToSend, provider: activeProvider });
+      const data = await runPaid<{ response?: string; _paidAmountFormatted?: string }>({ prompt: textToSend, provider: activeProvider });
       const aiText = typeof data === "string" ? data : data?.response;
       if (!aiText) {
         throw new Error("No response received from AI");

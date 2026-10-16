@@ -492,7 +492,7 @@ export default function CodePage() {
                     Auditor Ready
                   </h4>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Select a sample contract on the left or paste your custom Solidity code. Click "Run Security Audit" to inspect issues and patch suggestions.
+                    Select a sample contract on the left or paste your custom Solidity code. Click &quot;Run Security Audit&quot; to inspect issues and patch suggestions.
                   </p>
                 </div>
               )}
